@@ -13,10 +13,15 @@ def get_all_projects():
     _s.set_project("sthpw")
     projects = _s.query("sthpw/project")
     _s.set_project(project)
-    map(projects.pop, [ind for ind in range(len(projects))
-                       if projects[ind]["code"] in ["admin", "sthpw"]
-                       or projects[ind]["is_template"]])
-
+    map(projects.pop, [ind for ind in reversed(range(len(projects)))
+                       if (# filter 'admin' and 'sthpw'
+                               projects[ind]["code"] in ["admin", "sthpw"]
+                               # filter all template project
+                               or projects[ind]["is_template"]
+                               # filter all Sample Projects
+                               or projects[ind]['category'] == 'Sample Projects')
+                       # make exception for the vfx project
+                       and not projects[ind]['code'] == 'vfx'])
     return projects
 
 def map_sobject_to_snap(sobjs):
@@ -77,8 +82,6 @@ def get_sobject_from_snap(snap):
                                    snap["search_code"],
                                    project_code = snap.get("project_code"))
 
-
-
 def map_tasks_to_sobjects(tasks):
 
     '''
@@ -124,6 +127,10 @@ def get_snapshot_from_sobject(sobj):
     project = sobj[start:start + sobj[start:].find('&')]
     _s.set_project(project.replace("project=", ""))
     snapshots =  _s.get_all_children(sobj, "sthpw/snapshot")
+    for index in reversed(range(len(snapshots))):
+        if 'icon' in [snapshots[index].get(key).lower()
+                      for key in ['process', 'context']]:
+            snapshots.pop(index)
     _s.set_project(proj)
     return snapshots
 
@@ -283,7 +290,8 @@ def get_snapshots(context, task):
     @task: search_key of the task
     @return: {snapshot_search_key: {'filename': file basename at sandbox (str),
                                     'version': snapshot version (int),
-                                    'latest': is this version latest (bool)}
+                                    'latest': is this version latest (bool),
+                                    'description': description of the snapshot}
     '''
     import os.path as op
     sobj = get_sobject_from_task(task)
