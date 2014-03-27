@@ -305,8 +305,11 @@ def get_snapshots(context, task):
     for snap in snapshots:
         snapshot_dict[snap["__search_key__"]] = {"filename": op.basename(
             filename_from_snap(snap)), "version": snap["version"],
-                                    "latest": snap["is_latest"],
-                                    "description": snap['description']}
+                                                 "latest": snap["is_latest"],
+                                                 "description": snap[
+                                                     'description'],
+                                                 'timestamp': snap[
+                                                     'timestamp']}
     return snapshot_dict
 
 def filename_from_snap(snap):
