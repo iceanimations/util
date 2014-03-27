@@ -231,6 +231,7 @@ def all_process_tasks(project, process = None, tasks = None):
     return tasks[process] if process else tasks
 
 def date_str_to_datetime(string, format = "%Y-%m-%d %H:%M:%S"):
+    from datetime import datetime
     return datetime.strptime(string.split(".")[0], format)
 
 def get_project_title(proj_code):
