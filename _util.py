@@ -82,6 +82,10 @@ def get_sobject_from_snap(snap):
                                    snap["search_code"],
                                    project_code = snap.get("project_code"))
 
+def get_project_snapshots(proj):
+    return _s.query('sthpw/snapshot', filters = [('project_code', proj)])
+
+
 def map_tasks_to_sobjects(tasks):
 
     '''
