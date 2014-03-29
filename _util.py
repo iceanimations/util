@@ -7,6 +7,92 @@ def set_server(server):
     global _s
     _s = server
 
+try:
+    user = USER.get_user()
+    set_server(USER.get_server())
+    def get_all_task(user = USER.get_user()):
+        return [task.get("__search_key__", '') for proj in get_all_projects()
+                for task in all_tasks(proj, user = user)]
+        
+    def get_all_project_user_sobjects(user = USER.get_user()):
+        proj_dict = {}
+        for proj in get_all_projects():
+            key = proj['code']
+            sobj = get_user_related_sobjects(proj, user)
+            if sobj:
+                proj_dict[key] = sobj
+        return proj_dict
+
+    def get_user_related_sobjects(proj, user = USER.get_user()):
+        '''
+        @return: sobject_search_key
+        '''
+        return map_tasks_to_sobjects([task
+                                      for task in all_tasks(proj, user = user)
+                                      if str(task["status"]).lower() != "done"]).keys()
+
+    def sobject_to_user_task(sobj, user = USER.get_user()):
+
+        proj = _s.get_project()
+        start = sobj.find('project=')
+        project = sobj[start:start + sobj[start:].find('&')]
+        _s.set_project(project.replace("project=", ""))
+        tasks = _s.get_all_children(sobj, "sthpw/task",
+                                    filters = [("assigned", str(user))])
+        _s.set_project(proj)
+        return [task.get('__search_key__') for task in tasks]
+
+    def user_project_task(proj, user = USER.get_user()):
+        return {
+            "proj": {
+                "sobject_uniq_key": {
+                    "task_uniq_key": {
+                        "process": "name of process", 
+                        "context": {
+                            "name of context": {
+                                "snapshots": []
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        main_dict = {}
+        tasks = all_user_tasks = all_task(proj, user = user)
+        sobj_tasks = map_tasks_to_sobjects(tasks)
+        sobj_snaps = map_sobject_to_snap(sobj_tasks.keys())
+
+        proj = {}
+
+        for sobj, tasks in sobj_tasks.iteritems():
+            sobj_dict = {}
+            proj[sobj] = sobj_dict
+            for task in tasks:
+                task_dict = {}
+                sobj_dict[task["__search_key__"]] = task_dict
+                task_dict["process"] = task["process"]
+                context_dict = {}
+                task_dict["context"] = context_dict
+
+                snaps = sobj_snaps[sobj]
+
+                for snap in snaps:
+
+                    if snap["process"].lower() == task["process"].lower():
+
+                        if not context_dict.has_key(snap["context"]):
+                            context_dict[snap["context"]] = []
+
+                        context_dict[snap["context"]].append(snap['__search_key__'])
+
+                if not context_dict:
+                    context_dict[task["process"]] = []
+
+except:
+    user = None
+    from client.tactic_client_lib import TacticServerStub
+    set_server(TacticServerStub.get())
+    
 def get_server(): return _s
 def get_all_projects():
     project = _s.get_project()
@@ -67,25 +153,6 @@ def get_sobject_from_task(task):
                                    task["search_code"],
                                    project_code = task.get("project_code"))
 
-def get_sobject_from_snap(snap):
-    '''
-    @snap: snap dict or snap string
-    '''
-    if not isinstance(snap, dict):
-        snap = _s.get_by_search_key(snap)
-        
-    search_type = snap["search_type"]
-    if not search_type: return None
-    return _s.build_search_key(search_type[:search_type.find("?")
-                                               if not -1
-                                               else len(search_type)],
-                                   snap["search_code"],
-                                   project_code = snap.get("project_code"))
-
-def get_project_snapshots(proj):
-    return _s.query('sthpw/snapshot', filters = [('project_code', proj)])
-
-
 def map_tasks_to_sobjects(tasks):
 
     '''
@@ -138,6 +205,21 @@ def get_snapshot_from_sobject(sobj):
     _s.set_project(proj)
     return snapshots
 
+def get_sobject_from_snap(snap):
+    '''
+    @snap: snap dict or snap string
+    '''
+    if not isinstance(snap, dict):
+        snap = _s.get_by_search_key(snap)
+        
+    search_type = snap["search_type"]
+    if not search_type: return None
+    return _s.build_search_key(search_type[:search_type.find("?")
+                                               if not -1
+                                               else len(search_type)],
+                                   snap["search_code"],
+                               project_code = snap.get("project_code"))
+
 def get_sobject_name(sobj):
     sobj_dict =  _s.get_by_search_key(sobj)
     return sobj_dict.get("title",
@@ -172,10 +254,6 @@ def get_sobject_name(sobj):
                 
 #         snapshoted[sobj] = task_snap
 #     return snapshoted
-def get_all_task(user = USER.get_user()):
-    return [task.get("__search_key__", '') for proj in get_all_projects()
-            for task in all_tasks(proj, user = user)]
-        
 def all_tasks(project, process = None, user = None, clean = False):
 
     '''
@@ -211,6 +289,9 @@ def all_assets(project):
     _s.set_project(proj)
     return result
 
+def get_project_snapshots(proj):
+    return _s.query('sthpw/snapshot', filters = [('project_code', proj)])
+
 def task_details(project):
     pass
 
@@ -235,7 +316,6 @@ def all_process_tasks(project, process = None, tasks = None):
     return tasks[process] if process else tasks
 
 def date_str_to_datetime(string, format = "%Y-%m-%d %H:%M:%S"):
-    from datetime import datetime
     return datetime.strptime(string.split(".")[0], format)
 
 def get_project_title(proj_code):
@@ -245,34 +325,6 @@ def get_project_title(proj_code):
     else:
         return None
 
-def get_all_project_user_sobjects(user = USER.get_user()):
-    proj_dict = {}
-    for proj in get_all_projects():
-        key = proj['code']
-        sobj = get_user_related_sobjects(proj, user)
-        if sobj:
-            proj_dict[key] = sobj
-    return proj_dict
-
-def get_user_related_sobjects(proj, user = USER.get_user()):
-    '''
-    @return: sobject_search_key
-    '''
-    return map_tasks_to_sobjects([task
-                                  for task in all_tasks(proj, user = user)
-                                  if str(task["status"]).lower() != "done"]).keys()
-
-def sobject_to_user_task(sobj, user = USER.get_user()):
-
-    proj = _s.get_project()
-    start = sobj.find('project=')
-    project = sobj[start:start + sobj[start:].find('&')]
-    _s.set_project(project.replace("project=", ""))
-    tasks = _s.get_all_children(sobj, "sthpw/task",
-                                filters = [("assigned", str(user))])
-    _s.set_project(proj)
-    return [task.get('__search_key__') for task in tasks]
-    
 def get_task_process(task):
     return _s.get_by_search_key(task)["process"]
 
@@ -309,67 +361,24 @@ def get_snapshots(context, task):
     
     for snap in snapshots:
         snapshot_dict[snap["__search_key__"]] = {"filename": op.basename(
-            filename_from_snap(snap)), "version": snap["version"],
+            filename_from_snap(snap)),
+                                                 "version": snap["version"],
                                                  "latest": snap["is_latest"],
                                                  "description": snap[
                                                      'description'],
-                                                 'timestamp': snap[
-                                                     'timestamp']}
+                                                 'timestamp': snap['timestamp']
+        }
     return snapshot_dict
 
-def filename_from_snap(snap):
+def filename_from_snap(snap, mode = 'sandbox'):
+    '''
+    @snap: db dict
+    '''
+    pretty_print(snap)
     return _s.get_all_paths_from_snapshot(snap['__search_key__'],
-                                          mode = 'sandbox')[0]
+                                          mode = mode)[0]
     
-def user_project_task(proj, user = USER.get_user()):
-    return {
-        "proj": {
-            "sobject_uniq_key": {
-                "task_uniq_key": {
-                    "process": "name of process", 
-                    "context": {
-                        "name of context": {
-                            "snapshots": []
-                        }
-                    }
-                }
-            }
-        }
-    }
-    main_dict = {}
-    tasks = all_user_tasks = all_task(proj, user = user)
-    sobj_tasks = map_tasks_to_sobjects(tasks)
-    sobj_snaps = map_sobject_to_snap(sobj_tasks.keys())
-
-    proj = {}
-    
-    for sobj, tasks in sobj_tasks.iteritems():
-        sobj_dict = {}
-        proj[sobj] = sobj_dict
-        for task in tasks:
-            task_dict = {}
-            sobj_dict[task["__search_key__"]] = task_dict
-            task_dict["process"] = task["process"]
-            context_dict = {}
-            task_dict["context"] = context_dict
-
-            snaps = sobj_snaps[sobj]
-
-            for snap in snaps:
-
-                if snap["process"].lower() == task["process"].lower():
-
-                    if not context_dict.has_key(snap["context"]):
-                        context_dict[snap["context"]] = []
-
-                    context_dict[snap["context"]].append(snap['__search_key__'])
-                    
-            if not context_dict:
-                context_dict[task["process"]] = []
-
 def pretty_print(obj, ind = 2):
     import json
     print json.dumps(obj, indent = ind)
 
-
-set_server(USER.get_server())
