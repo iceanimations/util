@@ -375,7 +375,6 @@ def filename_from_snap(snap, mode = 'sandbox'):
     '''
     @snap: db dict
     '''
-    pretty_print(snap)
     return _s.get_all_paths_from_snapshot(snap['__search_key__'],
                                           mode = mode)[0]
     
