@@ -1,6 +1,6 @@
 from site import addsitedir as asd
 asd(r"r:/Pipe_Repo/Users/Hussain/utilities/TACTIC")
-from auth import user as USER
+from datetime import datetime
 _s = None
 
 def set_server(server):
@@ -8,6 +8,7 @@ def set_server(server):
     _s = server
 
 try:
+    from auth import user as USER
     user = USER.get_user()
     set_server(USER.get_server())
     def get_all_task(user = USER.get_user()):
