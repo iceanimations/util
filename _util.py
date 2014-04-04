@@ -377,6 +377,9 @@ def filename_from_snap(snap, mode = 'sandbox'):
     '''
     return _s.get_all_paths_from_snapshot(snap['__search_key__'],
                                           mode = mode)[0]
+                                          
+def get_all_users():
+    return _s.query("sthpw/login")
     
 def pretty_print(obj, ind = 2):
     import json
