@@ -194,15 +194,19 @@ def get_project_from_task(task):
     return _s.get_by_search_key(task)['project_code']
 
 def get_snapshot_from_sobject(sobj):
+    
     proj = _s.get_project()
     start = sobj.find('project=')
     project = sobj[start:start + sobj[start:].find('&')]
     _s.set_project(project.replace("project=", ""))
     snapshots =  _s.get_all_children(sobj, "sthpw/snapshot")
+    
     for index in reversed(range(len(snapshots))):
+        
         if 'icon' in [snapshots[index].get(key).lower()
                       for key in ['process', 'context']]:
             snapshots.pop(index)
+            
     _s.set_project(proj)
     return snapshots
 
@@ -223,10 +227,12 @@ def get_sobject_from_snap(snap):
 
 def get_sobject_name(sobj):
     sobj_dict =  _s.get_by_search_key(sobj)
-    return sobj_dict.get("title",
-                         sobj_dict.get("name",
-                                       sobj_dict.get("code")))
-
+    title =  sobj_dict.get("title",
+                           sobj_dict.get("name",
+                                         sobj_dict.get("code")))
+    # because of the changes in the new release
+    if title.lower() == 'no title':
+        return sobj_dict.get('code')
 # def add_snapshot_to_task(sobjs_to_tasks):
 
 #     '''
