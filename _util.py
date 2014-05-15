@@ -229,10 +229,9 @@ def get_sobject_name(sobj):
     sobj_dict =  _s.get_by_search_key(sobj)
     title =  sobj_dict.get("title",
                            sobj_dict.get("name",
-                                         sobj_dict.get("code")))
+                                         'No title'))
     # because of the changes in the new release
-    if title.lower() == 'no title':
-        return sobj_dict.get('code')
+    return title + '(%s)'%sobj_dict.get('code')
 # def add_snapshot_to_task(sobjs_to_tasks):
 
 #     '''
