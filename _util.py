@@ -43,56 +43,31 @@ try:
         _s.set_project(proj)
         return [task.get('__search_key__') for task in tasks]
 
-    def user_project_task(proj, user = USER.get_user()):
-        return {
-            "proj": {
-                "sobject_uniq_key": {
-                    "task_uniq_key": {
-                        "process": "name of process", 
-                        "context": {
-                            "name of context": {
-                                "snapshots": []
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        main_dict = {}
-        tasks = all_user_tasks = all_task(proj, user = user)
-        sobj_tasks = map_tasks_to_sobjects(tasks)
-        sobj_snaps = map_sobject_to_snap(sobj_tasks.keys())
-
-        proj = {}
-
-        for sobj, tasks in sobj_tasks.iteritems():
-            sobj_dict = {}
-            proj[sobj] = sobj_dict
-            for task in tasks:
-                task_dict = {}
-                sobj_dict[task["__search_key__"]] = task_dict
-                task_dict["process"] = task["process"]
-                context_dict = {}
-                task_dict["context"] = context_dict
-
-                snaps = sobj_snaps[sobj]
-
-                for snap in snaps:
-
-                    if snap["process"].lower() == task["process"].lower():
-
-                        if not context_dict.has_key(snap["context"]):
-                            context_dict[snap["context"]] = []
-
-                        context_dict[snap["context"]].append(snap['__search_key__'])
-
-                if not context_dict:
-                    context_dict[task["process"]] = []
 
 except:
     user = None
     from client.tactic_client_lib import TacticServerStub
     set_server(TacticServerStub.get())
+
+def set_project(project = None, search_key = None):
+    
+    print project, search_key
+    
+    server = _s
+    
+    if project and project != server.get_project():
+        server.set_project(project)
+    elif search_key:
+        server.set_project(get_project_from_search_key(search_key))
+    
+def get_project_from_search_key(s_key):
+    
+    if 'project' in s_key:
+        prj_tag = 'project='
+        return s_key[s_key.find(prj_tag) + len(prj_tag)
+                       :s_key.find('&')]
+    else:
+        return 'sthpw'
     
 def get_server(): return _s
 def get_all_projects():
@@ -196,9 +171,7 @@ def get_project_from_task(task):
 def get_snapshot_from_sobject(sobj):
     
     proj = _s.get_project()
-    start = sobj.find('project=')
-    project = sobj[start:start + sobj[start:].find('&')]
-    _s.set_project(project.replace("project=", ""))
+    set_project(search_key = sobj)
     snapshots =  _s.get_all_children(sobj, "sthpw/snapshot")
     
     for index in reversed(range(len(snapshots))):
@@ -207,7 +180,7 @@ def get_snapshot_from_sobject(sobj):
                       for key in ['process', 'context']]:
             snapshots.pop(index)
             
-    _s.set_project(proj)
+    set_project(project=proj)
     return snapshots
 
 def get_sobject_from_snap(snap):
@@ -380,6 +353,7 @@ def filename_from_snap(snap, mode = 'sandbox'):
     '''
     @snap: db dict
     '''
+    set_project(project = snap['project_code'])
     return _s.get_all_paths_from_snapshot(snap['__search_key__'],
                                           mode = mode)[0]
                                           
@@ -389,4 +363,3 @@ def get_all_users():
 def pretty_print(obj, ind = 2):
     import json
     print json.dumps(obj, indent = ind)
-
