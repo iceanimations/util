@@ -285,7 +285,7 @@ def get_sequences(project, episode = None):
     proj = current_project()
     set_project(project = project)
     result = _s.query('vfx/sequence',
-                      filters = [('episode_code', episode)]
+                      filters = [('episode_code', get_search_key_code(episode))]
                       if episode else [])
     set_project(project = proj)
     return result
@@ -386,9 +386,16 @@ def get_snapshots(context, task):
 def get_project_snapshots(proj):
     return _s.query('sthpw/snapshot', filters = [('project_code', proj)])
 
+def get_search_key_code(search_key):
+    '''
+    @search_key: sobject search_key
+    @return: code
+    '''
+    return _s.split_search_key(search_key)[0]
+    
 def get_all_users():
     return _s.query("sthpw/login")
-    
+
 def map_sobject_to_snap(sobjs):
     sobj_map = {}
     for sobj in sobjs:
