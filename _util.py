@@ -299,7 +299,7 @@ def get_shots(project, sequence = None):
     proj = current_project()
     set_project(project = project)
     result = _s.query('vfx/shot',
-                      filters = [('sequence_code', sequence)]
+                      filters = [('sequence_code', get_search_key_code(sequence))]
                       if sequence else [])
     set_project(project = proj)
     return result
@@ -391,10 +391,47 @@ def get_search_key_code(search_key):
     @search_key: sobject search_key
     @return: code
     '''
-    return _s.split_search_key(search_key)[0]
+    return _s.split_search_key(search_key)[1]
     
 def get_all_users():
     return _s.query("sthpw/login")
+
+def get_tactic_file_info():
+
+    tactic_raw = mi.FileInfo.get('TACTIC')
+
+    if tactic_raw:
+        tactic = json.loads(tactic_raw)
+    else:
+        tactic = {}
+
+    tactic['__ver__'] = '0.2'   # more snapshot info added
+
+    return tactic
+
+def get_references():
+    '''
+    @return: dict of reference that were referenced via TACTIC
+    i.e. they are recorded in the fileInfo ({[ref_node: ref_path[,]]})
+    '''
+    
+    refs = mi.get_reference_paths()
+    t_info = util.get_tactic_file_info()
+    snap_path = [op.normpath(util.filename_from_snap(snap)).lower()
+                 for snap in t_info.get('assets')]
+
+    for ref, path in dict(**refs).iteritems():
+
+        if op.normpath(path).lower() not in snap_path.keys():
+            refs.pop(ref)
+    return refs
+
+def set_tactic_file_info(tactic):
+    '''
+    @tactic: dict
+    '''
+
+    return mi.FileInfo.save('TACTIC', json.dumps(tactic))
 
 def map_sobject_to_snap(sobjs):
     sobj_map = {}
