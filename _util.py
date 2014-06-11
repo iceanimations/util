@@ -290,7 +290,7 @@ def get_sequences(project, episode = None):
     set_project(project = proj)
     return result
 
-def get_shots(project, sequence = None):
+def get_shots(project, sequence = None, episode=None):
     '''
     @project: project search key
     @sequence: sequence search key
@@ -299,8 +299,15 @@ def get_shots(project, sequence = None):
     proj = current_project()
     set_project(project = project)
     result = _s.query('vfx/shot',
-                      filters = [('sequence_code', get_search_key_code(sequence))]
-                      if sequence else [])
+                      filters = [('sequence_code', get_search_key_code(sequence)
+                                  if sequence else
+                                  ([seq.get('code')
+                                    for seq in _s.query(
+                                            'vfx/sequence', filters = [
+                                                ('episode_code',
+                                                 get_search_key_code(episode))])]
+                                   if episode else ''))]
+                      if (sequence or episode) else [])
     set_project(project = proj)
     return result
 
