@@ -5,6 +5,11 @@ This module can work both on server and client side.
 from site import addsitedir as asd
 asd(r"r:/Pipe_Repo/Users/Hussain/utilities/TACTIC")
 from datetime import datetime
+import imaya as mi
+reload(mi)
+import json, os
+op = os.path
+
 _s = None
 
 def set_server(server):
@@ -82,10 +87,19 @@ def all_process_tasks(project, process = None, tasks = None):
 def current_project():
     return _s.get_project()
 
+def cacheable(obj):
+    '''
+    :return: True if the object belongs to a TACTIC referenced file, else False
+    :obj: Maya object
+    '''
+    print mi.pc.PyNode(obj).referenceFile()
+    print get_references().keys()
+    return True if mi.pc.PyNode(obj).referenceFile() in get_references().keys() else False
+
 def date_str_to_datetime(string, format = "%Y-%m-%d %H:%M:%S"):
     return datetime.strptime(string.split(".")[0], format)
 
-def filename_from_snap(snap, mode = 'sandbox'):
+def get_filename_from_snap(snap, mode = 'sandbox'):
     '''
     @snap: db dict
     '''
@@ -93,6 +107,7 @@ def filename_from_snap(snap, mode = 'sandbox'):
     return _s.get_all_paths_from_snapshot(snap['__search_key__'],
                                           mode = mode)[0]
 
+filename_from_snap = get_filename_from_snap
 # def filter_user_tasks(user, tasks):
 #     '''
 #     Extract the tasks that belong ot `user' from a list `tasks'.
@@ -100,7 +115,6 @@ def filename_from_snap(snap, mode = 'sandbox'):
 #     @tasks: list of task
 #     '''
 #     return filter(lambda task: task["assigned"] == user, tasks)
-
 def get_project_from_search_key(s_key):
     
     if 'project' in s_key:
@@ -419,17 +433,17 @@ def get_tactic_file_info():
 def get_references():
     '''
     @return: dict of reference that were referenced via TACTIC
-    i.e. they are recorded in the fileInfo ({[ref_node: ref_path[,]]})
+    i.e. their trace is recorded in the fileInfo ({[ref_node: ref_path[,]]})
     '''
     
     refs = mi.get_reference_paths()
-    t_info = util.get_tactic_file_info()
-    snap_path = [op.normpath(util.filename_from_snap(snap)).lower()
+    t_info = get_tactic_file_info()
+    snap_path = [op.normpath(get_filename_from_snap(snap, mode = 'client_repo')).lower()
                  for snap in t_info.get('assets')]
-
+    # if the ref'ed file has no entry in the fileInfo purge it from  refs
     for ref, path in dict(**refs).iteritems():
 
-        if op.normpath(path).lower() not in snap_path.keys():
+        if op.normpath(path).lower() not in snap_path:
             refs.pop(ref)
     return refs
 
