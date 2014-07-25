@@ -5,8 +5,6 @@ This module can work both on server and client side.
 from site import addsitedir as asd
 asd(r"r:/Pipe_Repo/Users/Hussain/utilities/TACTIC")
 from datetime import datetime
-import imaya as mi
-reload(mi)
 import json, os
 op = os.path
 
@@ -92,6 +90,8 @@ def cacheable(obj):
     :return: True if the object belongs to a TACTIC referenced file, else False
     :obj: Maya object
     '''
+    import imaya as mi
+    reload(mi)
     print mi.pc.PyNode(obj).referenceFile()
     print get_references().keys()
     return True if mi.pc.PyNode(obj).referenceFile() in get_references().keys() else False
@@ -176,6 +176,9 @@ def get_project_from_task(task):
     return _s.get_by_search_key(task)['project_code']
 
 def get_snapshot_from_sobject(sobj):
+    '''
+    :sobj: search key of the sobj
+    '''
     
     proj = _s.get_project()
     set_project(search_key = sobj)
@@ -419,6 +422,8 @@ def get_all_users():
 
 def get_tactic_file_info():
 
+    import imaya as mi
+    reload(mi)
     tactic_raw = mi.FileInfo.get('TACTIC')
 
     if tactic_raw:
@@ -435,7 +440,9 @@ def get_references():
     @return: dict of reference that were referenced via TACTIC
     i.e. their trace is recorded in the fileInfo ({[ref_node: ref_path[,]]})
     '''
-    
+    import imaya as mi
+    reload(mi)
+   
     refs = mi.get_reference_paths()
     t_info = get_tactic_file_info()
     snap_path = [op.normpath(get_filename_from_snap(snap, mode = 'client_repo')).lower()
@@ -451,7 +458,8 @@ def set_tactic_file_info(tactic):
     '''
     @tactic: dict
     '''
-
+    import imaya as mi
+    reload(mi)
     return mi.FileInfo.save('TACTIC', json.dumps(tactic))
 
 def map_sobject_to_snap(sobjs):
