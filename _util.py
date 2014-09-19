@@ -348,16 +348,16 @@ def get_assets(project, add_icons=False):
     set_project(project = proj)
     return result
 
-def get_sobject_icon(sobject, mode='client_repo', file_type='icon'):
+def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     ''' get the icon path of the given sobject
 
-    @param sobject: sobject dictionary for which the icon is required
+    @param sobject: sobject searchkey for which the icon is required
     @keyparam mode: the type of the path required, leave it to default
     client_repo for production utilities
     @keyparam file_type: the type of file required, only 'main', 'icon' and
     'web' are relevant
     '''
-    iconss = _s.get_snapshot(sobject['__search_key__'], context='icon', version=0)
+    iconss = _s.get_snapshot(sobject_skey, context='icon', version=0)
     if not iconss.get('code'):
         return ''
 
