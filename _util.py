@@ -64,7 +64,7 @@ try:
 except:
     user = None
     from tactic_client_lib import TacticServerStub
-    set_server(TacticServerStub.get())
+    set_server(TacticServerStub.get(setup=False))
 
 def all_task_processes(project, tasks = None):
     processes = set([task["process"] for task in (all_tasks(project)
