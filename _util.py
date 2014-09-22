@@ -18,16 +18,16 @@ try:
     from auth import user as USER
     user = USER.get_user()
     set_server(USER.get_server())
-    
+
     def get_all_task(user = USER.get_user()):
-        
+
         user = USER.get_user()
         return [task.get("__search_key__", '') for proj in get_all_projects()
                 for task in all_tasks(proj, user = user)]
 
     def get_all_project_user_sobjects(user = USER.get_user()):
         '''
-        
+
         '''
         user = USER.get_user()
         proj_dict = {}
@@ -36,7 +36,7 @@ try:
             sobj = get_user_related_sobjects(proj, user)
             if sobj:
                 proj_dict[key] = sobj
-                
+
         return proj_dict
 
     def get_user_related_sobjects(proj, user = USER.get_user()):
@@ -63,8 +63,8 @@ try:
 
 except:
     user = None
-    from client.tactic_client_lib import TacticServerStub
-    set_server(TacticServerStub.get())
+    from tactic_client_lib import TacticServerStub
+    set_server(TacticServerStub.get(setup=False))
 
 def all_task_processes(project, tasks = None):
     processes = set([task["process"] for task in (all_tasks(project)
@@ -116,14 +116,14 @@ filename_from_snap = get_filename_from_snap
 #     '''
 #     return filter(lambda task: task["assigned"] == user, tasks)
 def get_project_from_search_key(s_key):
-    
+
     if 'project' in s_key:
         prj_tag = 'project='
         return s_key[s_key.find(prj_tag) + len(prj_tag)
                        :s_key.find('&')]
     else:
         return 'sthpw'
-    
+
 # def get_all_projects(clean = False):
 #     projects = all_projects()
 #     if clean:
@@ -156,13 +156,13 @@ def get_all_projects():
     return projects
 
 def get_sobject_from_task(task):
-    
+
     '''
     @task: task dict or task string
     '''
     if not isinstance(task, dict):
         task = _s.get_by_search_key(task)
-        
+
     search_type = task["search_type"]
     if not search_type: return None
     return _s.build_search_key(search_type[:search_type.find("?")
@@ -172,24 +172,24 @@ def get_sobject_from_task(task):
                                    project_code = task.get("project_code"))
 
 def get_project_from_task(task):
-    
+
     return _s.get_by_search_key(task)['project_code']
 
 def get_snapshot_from_sobject(sobj):
     '''
     :sobj: search key of the sobj
     '''
-    
+
     proj = _s.get_project()
     set_project(search_key = sobj)
     snapshots =  _s.get_all_children(sobj, "sthpw/snapshot")
-    
+
     for index in reversed(range(len(snapshots))):
-        
+
         if 'icon' in [snapshots[index].get(key).lower()
                       for key in ['process', 'context']]:
             snapshots.pop(index)
-            
+
     set_project(project=proj)
     return snapshots
 
@@ -199,17 +199,17 @@ def get_sobject_from_snap(snap):
     '''
     if not isinstance(snap, dict):
         snap = _s.get_by_search_key(snap)
-        
+
     search_type = snap["search_type"]
     if not search_type: return None
     return _s.build_search_key(search_type[:search_type.find("?")
-                                               if not -1
-                                               else len(search_type)],
-                                   snap["search_code"],
+                                           if not -1
+                                           else len(search_type)],
+                               snap["search_code"],
                                project_code = snap.get("project_code"))
 
 def get_sobject_name(sobj):
-    
+
     sobj_dict =  _s.get_by_search_key(sobj)
     title =  sobj_dict.get("title",
                            sobj_dict.get("name",
@@ -238,11 +238,11 @@ def get_sobject_name(sobj):
 #             process = task["process"]
 #             snaps = []
 #             task_snap[task["__search_key__"]] = {"task": task, "snaps": snaps}
-            
+
 #             for snap in sobj_snaps:
 #                 if snap["process"] == process:
 #                     snaps.append(snap)
-                
+
 #         snapshoted[sobj] = task_snap
 #     return snapshoted
 def get_tasks(project, process = None, user = None, clean = False):
@@ -251,7 +251,7 @@ def get_tasks(project, process = None, user = None, clean = False):
     @project: takes in the project code
     @process: take in a single process whose tasks shall be returned. None implies all.
     '''
-    
+
     proj = current_project()
     set_project(project = project["code"])
     filters = [("process", process)] if process else []
@@ -263,7 +263,7 @@ def get_tasks(project, process = None, user = None, clean = False):
         filters.append(("assigned", user))
     else:
         pass
-    
+
     tasks = []
     print "project:", _s.get_project()
     try:
@@ -276,10 +276,10 @@ def get_tasks(project, process = None, user = None, clean = False):
     except:
         print 'ERROR!!!!'
         pass
-    
+
     pretty_print(tasks)
     set_project(project = proj)
-    
+
     return tasks
 
 def get_episodes(project):
@@ -328,13 +328,116 @@ def get_shots(project, sequence = None, episode=None):
     set_project(project = proj)
     return result
 
-def get_assets(project):
+
+def get_assets(project, add_icons=False):
+    ''' get all `assets` in a vfx project 
+    @param project: code of the project being queried
+    @type project: string
+    @param add_icons: set this to true if you want icon paths as a list in the
+    dictionary accessible by the key 'icon'. Use this with caution because it
+    might slow the call down if there are a lot of assets.
+
+    @returns: sobject dictionary
+    @rtype: dict
+    '''
     proj = current_project()
     set_project(project = project)
-    result =  _s.query('vfx/asset'# , filters = [("project_code", project)]
-    )
+    result =  _s.query('vfx/asset')
+    if add_icons:
+        for asset in result:
+            asset['icon'] = get_icon(asset)
     set_project(project = proj)
     return result
+
+
+def get_icon(obj, mode='client_repo', file_type='icon'):
+    ''' Get an icon for file, path, snapshot or sobject
+
+    :param obj: filepath or skey or sobject dict of file, snapshot or sobject
+    for which icon is required
+    :type obj: dict or str or unicode
+    '''
+    try:
+        if isinstance(obj, dict):
+            obj = obj.get('__search_key__')
+        stype, code = _s.split_search_key(obj)
+        if obj.startswith('sthpw/file'):
+            return get_file_icon(obj, mode=mode, file_type=file_type)
+        elif obj.startswith('sthpw/snapshot'):
+            return get_snapshot_icon(obj, mode=mode, file_type=file_type)
+        return get_sobject_icon(obj, mode=mode, file_type=file_type)
+    except (AssertionError, ValueError, KeyError, AttributeError):
+        return get_path_icon(obj, mode=mode, file_type=file_type)
+
+
+def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
+    ''' get the icon path of the given sobject
+
+    @param sobject: sobject searchkey for which the icon is required
+    @keyparam mode: the type of the path required, leave it to default
+    client_repo for production utilities
+    @keyparam file_type: the type of file required, only 'main', 'icon' and
+    'web' are relevant
+    '''
+    context = 'icon'
+    if sobject_skey.find('>') >= 0:
+        sobject_skey, context = sobject_skey.split('>')
+
+    iconss = _s.get_snapshot(sobject_skey, context=context, version=0)
+    if not iconss.get('code'):
+        return ''
+
+    return get_snapshot_icon(iconss['code'], mode=mode, file_type=file_type)
+
+
+def get_path_icon(path, mode='client_repo', file_type='icon'):
+    ''' return the icon for a given path in client_repo '''
+    basedir = op.normcase( op.normpath(
+                _s.get_base_dirs()['win32_client_repo_dir']))
+    path = op.normcase(op.normpath(path))
+    try:
+        relative_dir = op.relpath(path, basedir)
+    except ValueError:
+        return ''
+    relative_dir, file_name = op.split(relative_dir)
+    file_sobj = _s.query('sthpw/file', filters=[ ('relative_dir',
+        relative_dir.replace('\\', '/')), ('file_name', file_name)],
+        single = True)
+    if file_sobj:
+        return get_file_icon(file_sobj, mode=mode, file_type=file_type)
+    return ''
+
+
+def get_file_icon(file_sobject, mode='client_repo', file_type='icon'):
+    ''' get an icon from the snapshot given a file sobject '''
+    sscode = file_sobject.get('snapshot_code')
+    if not sscode:
+        ss = _s.query('sthpw/file', filters=[('code', file_sobject['code'])],
+                columns = ['snapshot_code'], single=True)
+        if ss:
+            sscode = ss['snapshot_code']
+        else:
+            return ''
+    return get_snapshot_icon(sscode, mode=mode, file_type=file_type)
+
+
+def get_snapshot_icon(snapshot_code, mode='client_repo', file_type='icon'):
+    ''' get the icon path of the given sobject
+
+    @param snapshot_code: sobject searchkey for which the icon is required
+    @keyparam mode: the type of the path required, leave it to default
+    client_repo for production utilities
+    @keyparam file_type: the type of file required, only 'main', 'icon' and
+    'web' are relevant
+    '''
+    file_types = []
+    file_types.append(file_type)
+    filepath = _s.get_all_paths_from_snapshot(snapshot_code, mode=mode,
+            file_types=file_types)
+    if filepath:
+        filepath=filepath[0]
+    return filepath
+
 
 def get_assets_in_shot(project, shot):
     '''
@@ -354,7 +457,7 @@ def get_assets_in_shot(project, shot):
                              columns = ['asset_code'])))
     set_project(proj)
     return result
-    
+
 def get_project_title(proj_code):
     result = _s.query("sthpw/project", filters = [("code", proj_code)])
     if result:
@@ -395,7 +498,7 @@ def get_snapshots(context, task):
     snapshots = [snap for snap in snapshots
                  if snap["process"] == _s.get_by_search_key(task)["process"]]
     snapshot_dict = {}
-    
+
     for snap in snapshots:
         snapshot_dict[snap["__search_key__"]] = {"filename": op.basename(
             filename_from_snap(snap)),
@@ -416,7 +519,7 @@ def get_search_key_code(search_key):
     @return: code
     '''
     return _s.split_search_key(search_key)[1]
-    
+
 def get_all_users():
     return _s.query("sthpw/login")
 
@@ -442,7 +545,7 @@ def get_references():
     '''
     import imaya as mi
     reload(mi)
-   
+
     refs = mi.get_reference_paths()
     t_info = get_tactic_file_info()
     snap_path = [op.normpath(get_filename_from_snap(snap, mode = 'client_repo')).lower()
@@ -478,7 +581,7 @@ def map_tasks_to_sobjects(tasks):
     '''
     s_tasks = {}
     for task in tasks:
-        
+
         sobj = get_sobject_from_task(task)
         if not sobj: continue
         try:
@@ -510,9 +613,7 @@ def pretty_print(obj, ind = 2):
     print json.dumps(obj, indent = ind)
 
 def set_project(project = None, search_key = None):
-
     server = _s
-    
     if project and project != server.get_project():
         server.set_project(project)
     elif search_key:
