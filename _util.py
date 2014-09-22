@@ -369,6 +369,7 @@ def get_icon(obj, mode='client_repo', file_type='icon'):
     except (AssertionError, ValueError, KeyError, AttributeError):
         return get_path_icon(obj, mode=mode, file_type=file_type)
 
+
 def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     ''' get the icon path of the given sobject
 
@@ -382,7 +383,6 @@ def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     if sobject_skey.find('>') >= 0:
         sobject_skey, context = sobject_skey.split('>')
 
-    print sobject_skey, context, _s
     iconss = _s.get_snapshot(sobject_skey, context=context, version=0)
     if not iconss.get('code'):
         return ''
