@@ -351,9 +351,10 @@ def get_assets(project, add_icons=False):
 
 
 def get_icon(obj, mode='client_repo', file_type='icon'):
-    ''' Get an icon for file, snapshot or sobject
-    :param obj: skey or sobject dict of file, snapshot or sobject for which
-    icon is required
+    ''' Get an icon for file, path, snapshot or sobject
+
+    :param obj: filepath or skey or sobject dict of file, snapshot or sobject
+    for which icon is required
     :type obj: dict or str or unicode
     '''
     try:
@@ -366,7 +367,7 @@ def get_icon(obj, mode='client_repo', file_type='icon'):
             return get_snapshot_icon(obj, mode=mode, file_type=file_type)
         return get_sobject_icon(obj, mode=mode, file_type=file_type)
     except (AssertionError, ValueError, KeyError, AttributeError):
-        return ''
+        return get_path_icon(obj, mode=mode, file_type=file_type)
 
 def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     ''' get the icon path of the given sobject
@@ -389,7 +390,26 @@ def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     return get_snapshot_icon(iconss['code'], mode=mode, file_type=file_type)
 
 
+def get_path_icon(path, mode='client_repo', file_type='icon'):
+    ''' return the icon for a given path in client_repo '''
+    basedir = op.normcase( op.normpath(
+                _s.get_base_dirs()['win32_client_repo_dir']))
+    path = op.normcase(op.normpath(path))
+    try:
+        relative_dir = op.relpath(path, basedir)
+    except ValueError:
+        return ''
+    relative_dir, file_name = op.split(relative_dir)
+    file_sobj = _s.query('sthpw/file', filters=[ ('relative_dir',
+        relative_dir.replace('\\', '/')), ('file_name', file_name)],
+        single = True)
+    if file_sobj:
+        return get_file_icon(file_sobj, mode=mode, file_type=file_type)
+    return ''
+
+
 def get_file_icon(file_sobject, mode='client_repo', file_type='icon'):
+    ''' get an icon from the snapshot given a file sobject '''
     sscode = file_sobject.get('snapshot_code')
     if not sscode:
         ss = _s.query('sthpw/file', filters=[('code', file_sobject['code'])],
