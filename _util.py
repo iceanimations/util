@@ -328,6 +328,7 @@ def get_shots(project, sequence = None, episode=None):
     set_project(project = proj)
     return result
 
+
 def get_assets(project, add_icons=False):
     ''' get all `assets` in a vfx project 
     @param project: code of the project being queried
@@ -344,9 +345,28 @@ def get_assets(project, add_icons=False):
     result =  _s.query('vfx/asset')
     if add_icons:
         for asset in result:
-            asset['icon'] = get_sobject_icon(asset)
+            asset['icon'] = get_icon(asset)
     set_project(project = proj)
     return result
+
+
+def get_icon(obj, mode='client_repo', file_type='icon'):
+    ''' Get an icon for file, snapshot or sobject
+    :param obj: skey or sobject dict of file, snapshot or sobject for which
+    icon is required
+    :type obj: dict or str or unicode
+    '''
+    try:
+        if isinstance(obj, dict):
+            obj = obj.get('__search_key__')
+        stype, code = _s.split_search_key(obj)
+        if obj.startswith('sthpw/file'):
+            return get_file_icon(obj, mode=mode, file_type=file_type)
+        elif obj.startswith('sthpw/snapshot'):
+            return get_snapshot_icon(obj, mode=mode, file_type=file_type)
+        return get_sobject_icon(obj, mode=mode, file_type=file_type)
+    except (AssertionError, ValueError, KeyError, AttributeError):
+        return ''
 
 def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     ''' get the icon path of the given sobject
@@ -357,16 +377,47 @@ def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     @keyparam file_type: the type of file required, only 'main', 'icon' and
     'web' are relevant
     '''
-    iconss = _s.get_snapshot(sobject_skey, context='icon', version=0)
+    context = 'icon'
+    if sobject_skey.find('>') >= 0:
+        sobject_skey, context = sobject_skey.split('>')
+
+    print sobject_skey, context, _s
+    iconss = _s.get_snapshot(sobject_skey, context=context, version=0)
     if not iconss.get('code'):
         return ''
 
-    filepath = _s.get_all_paths_from_snapshot(iconss['code'], mode=mode,
-            file_types=[file_type])
+    return get_snapshot_icon(iconss['code'], mode=mode, file_type=file_type)
+
+
+def get_file_icon(file_sobject, mode='client_repo', file_type='icon'):
+    sscode = file_sobject.get('snapshot_code')
+    if not sscode:
+        ss = _s.query('sthpw/file', filters=[('code', file_sobject['code'])],
+                columns = ['snapshot_code'], single=True)
+        if ss:
+            sscode = ss['snapshot_code']
+        else:
+            return ''
+    return get_snapshot_icon(sscode, mode=mode, file_type=file_type)
+
+
+def get_snapshot_icon(snapshot_code, mode='client_repo', file_type='icon'):
+    ''' get the icon path of the given sobject
+
+    @param snapshot_code: sobject searchkey for which the icon is required
+    @keyparam mode: the type of the path required, leave it to default
+    client_repo for production utilities
+    @keyparam file_type: the type of file required, only 'main', 'icon' and
+    'web' are relevant
+    '''
+    file_types = []
+    file_types.append(file_type)
+    filepath = _s.get_all_paths_from_snapshot(snapshot_code, mode=mode,
+            file_types=file_types)
     if filepath:
         filepath=filepath[0]
-
     return filepath
+
 
 def get_assets_in_shot(project, shot):
     '''
