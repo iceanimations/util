@@ -365,6 +365,8 @@ def get_icon(obj, mode='client_repo', file_type='icon'):
             return get_file_icon(obj, mode=mode, file_type=file_type)
         elif obj.startswith('sthpw/snapshot'):
             return get_snapshot_icon(obj, mode=mode, file_type=file_type)
+        elif obj.startswith('sthpw/task'):
+            return get_task_icon(obj, mode=mode, file_type=file_type)
         return get_sobject_icon(obj, mode=mode, file_type=file_type)
     except (AssertionError, ValueError, KeyError, AttributeError):
         return get_path_icon(obj, mode=mode, file_type=file_type)
@@ -393,6 +395,32 @@ def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
         return ''
 
     return get_snapshot_icon(iconss['code'], mode=mode, file_type=file_type)
+
+
+def get_task_icon(task, mode='client_repo', file_type='icon'):
+    task_skey = task
+    if isinstance(task, dict):
+        task_skey = task.get('__search_key__')
+    else:
+        task = _s.get_by_search_key(task_skey)
+
+    if not task_skey or not task:
+        return ''
+
+    context=None
+    if task_skey.find('>') >= 0:
+        task_skey, context = task_skey.split('>')
+
+    sobject = get_sobject_from_task(task)
+    sobject_skey = sobject.get('__search_key__')
+
+    if context:
+        process = task['process']
+        if not process:
+            process = context.split('/')[0]
+        sobject_skey += '>' + process + '>' + context
+
+    return get_sobject_icon(sobject_skey, mode=mode, file_type=file_type)
 
 
 def get_path_icon(path, mode='client_repo', file_type='icon'):
