@@ -379,11 +379,16 @@ def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     @keyparam file_type: the type of file required, only 'main', 'icon' and
     'web' are relevant
     '''
+    process = None
     context = 'icon'
     if sobject_skey.find('>') >= 0:
-        sobject_skey, context = sobject_skey.split('>')
+        parts = sobject_skey.split('>')
+        sobject_skey = parts[0]
+        process = parts[1]
+        context = parts[1] if len(parts) == 2 else '/'.join(parts[2:])
 
-    iconss = _s.get_snapshot(sobject_skey, context=context, version=0)
+    iconss = _s.get_snapshot(sobject_skey, context=context, version=0,
+            process=process)
     if not iconss.get('code'):
         return ''
 
