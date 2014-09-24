@@ -381,6 +381,7 @@ def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     @keyparam file_type: the type of file required, only 'main', 'icon' and
     'web' are relevant
     '''
+    print sobject_skey
     process = None
     context = 'icon'
     if sobject_skey.find('>') >= 0:
@@ -415,16 +416,16 @@ def get_task_icon(task, mode='client_repo', file_type='icon'):
     if not task_skey or not task:
         return ''
 
-    sobject = get_sobject_from_task(task)
-    if not sobject:
+    sobject_skey = get_sobject_from_task(task)
+    if not sobject_skey:
         return ''
-    sobject_skey = sobject.get('__search_key__')
 
     if context:
         process = task.get('process')
         if not process:
             process = context.split('/')[0]
         sobject_skey += '>' + process + '>' + context
+        print sobject_skey
 
     return get_sobject_icon(sobject_skey, mode=mode, file_type=file_type)
 
