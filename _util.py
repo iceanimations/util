@@ -398,24 +398,30 @@ def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
 
 
 def get_task_icon(task, mode='client_repo', file_type='icon'):
+    ''' return an icon for the given task by getting icon from associated
+    sobject '''
     task_skey = task
+    context=None
     if isinstance(task, dict):
         task_skey = task.get('__search_key__')
     else:
-        task = _s.get_by_search_key(task_skey)
+        if task_skey.find('>') >= 0:
+            task_skey, context = task_skey.split('>')
+        try:
+            task = _s.get_by_search_key(task_skey)
+        except:
+            task = None
 
     if not task_skey or not task:
         return ''
 
-    context=None
-    if task_skey.find('>') >= 0:
-        task_skey, context = task_skey.split('>')
-
     sobject = get_sobject_from_task(task)
+    if not sobject:
+        return ''
     sobject_skey = sobject.get('__search_key__')
 
     if context:
-        process = task['process']
+        process = task.get('process')
         if not process:
             process = context.split('/')[0]
         sobject_skey += '>' + process + '>' + context
@@ -528,8 +534,10 @@ def get_snapshots(context, task):
 
     snapshots = get_snapshot_from_sobject(sobj)
 
+    process = _s.get_by_search_key(task)["process"]
+
     snapshots = [snap for snap in snapshots
-                 if snap["process"] == _s.get_by_search_key(task)["process"]]
+                 if snap["process"] == process and snap["context"] == context]
     snapshot_dict = {}
 
     for snap in snapshots:
