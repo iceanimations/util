@@ -265,7 +265,7 @@ def get_tasks(project, process = None, user = None, clean = False):
         pass
 
     tasks = []
-    print "project:", _s.get_project()
+    #print "project:", _s.get_project()
     try:
         tasks = _s.query("sthpw/task", filters = filters)
         if clean:
@@ -381,7 +381,6 @@ def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     @keyparam file_type: the type of file required, only 'main', 'icon' and
     'web' are relevant
     '''
-    print sobject_skey
     process = None
     context = 'icon'
     if sobject_skey.find('>') >= 0:
@@ -425,7 +424,6 @@ def get_task_icon(task, mode='client_repo', file_type='icon'):
         if not process:
             process = context.split('/')[0]
         sobject_skey += '>' + process + '>' + context
-        print sobject_skey
 
     return get_sobject_icon(sobject_skey, mode=mode, file_type=file_type)
 
