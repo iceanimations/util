@@ -20,7 +20,9 @@ try:
     set_server(USER.get_server())
 
     def get_all_task(user = USER.get_user()):
-
+        '''
+        :return: list of task search keys
+        '''
         user = USER.get_user()
         return [task.get("__search_key__", '') for proj in get_all_projects()
                 for task in all_tasks(proj, user = user)]
@@ -158,7 +160,8 @@ def get_all_projects():
 def get_sobject_from_task(task):
 
     '''
-    @task: task dict or task string
+    :task: task dict or task string
+    :return: search_key of the associated sobject
     '''
     if not isinstance(task, dict):
         task = _s.get_by_search_key(task)
@@ -507,7 +510,9 @@ def get_task_process(task):
     return _s.get_by_search_key(task)["process"]
 
 def get_contexts_from_task(task):
-
+    '''
+    :task: search_key of task
+    '''
     sobj = get_sobject_from_task(task)
     task_sobj = _s.get_by_search_key(task)
     contexts = set([item['context']
