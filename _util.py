@@ -63,10 +63,12 @@ try:
         return [task.get('__search_key__') for task in tasks]
 
 
-except:
+except Exception as e:
     user = None
-    from tactic_client_lib import TacticServerStub
-    set_server(TacticServerStub.get(setup=False))
+    #from tactic_client_lib import TacticServerStub
+    #set_server(TacticServerStub.get(setup=False))
+    from auth import user as USER
+    set_server(USER.TacticServer(setup=False))
 
 def all_task_processes(project, tasks = None):
     processes = set([task["process"] for task in (all_tasks(project)
@@ -106,8 +108,9 @@ def get_filename_from_snap(snap, mode = 'sandbox'):
     @snap: db dict
     '''
     set_project(project = snap['project_code'])
-    return _s.get_all_paths_from_snapshot(snap['__search_key__'],
+    path = _s.get_all_paths_from_snapshot(snap['__search_key__'],
                                           mode = mode)[0]
+    return path if path else None
 
 filename_from_snap = get_filename_from_snap
 # def filter_user_tasks(user, tasks):
