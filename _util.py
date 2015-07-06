@@ -502,6 +502,23 @@ def get_assets_in_shot(project, shot):
     set_project(proj)
     return result
 
+def get_episode_asset(project, episode, asset, forceCreate=False):
+    proj = current_project()
+    set_project(project)
+
+    obj = _s.query('vfx/asset_in_episode',
+            filters=[('episode_code', episode['code']),
+                ('asset_code', asset['code'])], single=True)
+
+    if not obj and forceCreate:
+        obj = _s.insert('vfx/asset_in_episode', data={
+            'episode_code': episode['code'],
+            'asset_code': asset['code']})
+
+    set_project(proj)
+    return obj
+
+
 def get_project_title(proj_code):
     result = _s.query("sthpw/project", filters = [("code", proj_code)])
     if result:
@@ -672,6 +689,14 @@ def task_details(project):
 
 def team_involved(project):
     pass
+
+def get_snapshot_info(search_key):
+    snapshot = _s.get_by_search_key(search_key)
+    snapshot['asset'] = _s.get_by_code(snapshot['search_type'],
+        snapshot['search_code'])
+    return snapshot
+
+
 
 all_assets = get_assets
 all_tasks = get_tasks
