@@ -759,6 +759,10 @@ def get_all_publish_targets(snapshot):
     server = _s
     return server.get_dependencies(snapshot, tag='publish_target')
 
+def get_publish_source(snapshot):
+    server = _s
+    dep = server.get_dependencies(snapshot, tag='publish_source')
+    return dep[0] if dep else {}
 
 all_assets = get_assets
 all_tasks = get_tasks
