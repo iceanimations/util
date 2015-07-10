@@ -502,23 +502,6 @@ def get_assets_in_shot(project, shot):
     set_project(proj)
     return result
 
-def get_episode_asset(project, episode, asset, forceCreate=False):
-    proj = current_project()
-    set_project(project)
-
-    obj = _s.query('vfx/asset_in_episode',
-            filters=[('episode_code', episode['code']),
-                ('asset_code', asset['code'])], single=True)
-
-    if not obj and forceCreate:
-        obj = _s.insert('vfx/asset_in_episode', data={
-            'episode_code': episode['code'],
-            'asset_code': asset['code']})
-
-    set_project(proj)
-    return obj
-
-
 def get_project_title(proj_code):
     result = _s.query("sthpw/project", filters = [("code", proj_code)])
     if result:
@@ -696,6 +679,53 @@ def get_snapshot_info(search_key):
         snapshot['search_code'])
     return snapshot
 
+def copy_snapshot(snapshot_from, snapshot_to, mode='copy'):
+    ''' make a copy of all the files in the snaphot_from to snapshot_to
+    '''
+    server = _s
+    dirs = []
+    groups = []
+    files = []
+    ftypes = []
+    base_dir = server.get_base_dirs()['win32_client_repo_dir']
+
+    for fileEntry in server.get_all_children(snapshot_from['__search_key__'],
+            'sthpw/file'):
+        file_path = op.join(base_dir, fileEntry['relative_dir'],
+                fileEntry['file_name']).replace('/', '\\')
+        if fileEntry['base_type'] == 'file':
+            files.append(file_path)
+            ftypes.append(fileEntry['type'])
+        elif fileEntry['base_type'] == 'directory':
+            dirs.append((file_path, fileEntry['type']))
+        elif fileEntry['base_type'] == 'sequence':
+            groups.append((file_path, fileEntry['file_range'], fileEntry['type']))
+
+    server.add_file(snapshot_to['code'], files, file_type=ftypes, mode=mode, create_icon=False)
+    for directory in dirs:
+        server.add_directory(snapshot_to['code'], directory[0],
+                file_type=directory[1], mode=mode)
+    for group in groups:
+        server.add_group(snapshot_to['code'], group[1], group[0], mode=mode)
+
+    return True
+
+
+def get_episode_asset(project, episode, asset, force_create=False):
+    proj = current_project()
+    set_project(project)
+
+    if force_create:
+        obj = _s.get_unique_sobject('vfx/asset_in_episode', data={
+            'episode_code': episode['code'],
+            'asset_code': asset['code']})
+    else:
+        obj = _s.query('vfx/asset_in_episode',
+                filters=[('episode_code', episode['code']),
+                    ('asset_code', asset['code'])], single=True)
+
+    set_project(proj)
+    return obj
 
 
 all_assets = get_assets
