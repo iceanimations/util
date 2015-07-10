@@ -728,5 +728,38 @@ def get_episode_asset(project, episode, asset, force_create=False):
     return obj
 
 
+def publish_asset_to_episode(project_sk, episode, asset, snapshot, context,
+        set_current=True):
+    server = _s
+    pub_obj = get_episode_asset(project_sk, episode, asset, True)
+
+    newss = server.create_snapshot(pub_obj, context=context,
+            is_current=set_current, snapshot_type=snapshot['snapshot_type'])
+
+    copy_snapshot(snapshot, newss)
+
+    server.add_dependency_by_code(newss['code'], snapshot['code'],
+            type='ref', tag='publish_source')
+    server.add_dependency_by_code(snapshot['code'], newss['code'],
+            type='ref', tag='publish_target')
+
+    return newss
+
+
+def get_published_snapshots_in_episode(project_sk, episode, asset, context):
+    pub_obj = get_episode_asset(project_sk, episode, asset)
+    snapshots = []
+    if pub_obj:
+        snapshots = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    snapshots = [ss for ss in snapshots if ss['context'] == context]
+    return snapshots
+
+
+def get_all_publish_targets(snapshot):
+    server = _s
+    return server.get_dependencies(snapshot, tag='publish_target')
+
+
 all_assets = get_assets
 all_tasks = get_tasks
+
