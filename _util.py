@@ -288,6 +288,8 @@ def get_tasks(project, process = None, user = None, clean = False):
 
     return tasks
 
+all_tasks = get_tasks
+
 def get_episodes(project):
     '''
     @project: project search key
@@ -355,6 +357,7 @@ def get_assets(project, add_icons=False):
     set_project(project = proj)
     return result
 
+all_assets = get_assets
 
 def get_icon(obj, mode='client_repo', file_type='icon'):
     ''' Get an icon for file, path, snapshot or sobject
@@ -759,11 +762,50 @@ def get_all_publish_targets(snapshot):
     server = _s
     return server.get_dependencies(snapshot, tag='publish_target')
 
+def get_published_targets_in_episode(snapshot, project_sk, episode):
+    server = _s
+    asset = snapshot.get('asset')
+    if not asset:
+        asset = server.get_parent(snapshot)
+    pub_obj = get_episode_asset(project_sk, episode, asset)
+    targets = get_all_publish_targets(snapshot)
+    published = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    result = [target for target in targets for pub in published if
+            target['code'] == pub['code']]
+    return result
+
 def get_publish_source(snapshot):
     server = _s
     dep = server.get_dependencies(snapshot, tag='publish_source')
     return dep[0] if dep else {}
 
-all_assets = get_assets
-all_tasks = get_tasks
+def link_shaded_to_rig(shaded, rig):
+    ''' link shaded to rig '''
+    server = _s
+    server.add_dependency_by_code(shaded['code'], rig['code'], type='ref',
+            tag='cache_compatible_rig')
+    server.add_dependency_by_code(rig['code'], shaded['code'], type='ref',
+            tag='cache_compatible_shaded')
+
+def get_cache_compatible_objects(snapshot):
+    server = _s
+    compatible = []
+    if snapshot['context'].split('/')[0] == 'rig':
+        compatible = server.get_dependencies(snapshot,
+                tag='cache_compatible_shaded')
+    elif snapshot['context'].split('/')[0] == 'shaded':
+        compatible = server.get_dependencies(snapshot,
+                tag='cache_compatible_rig')
+    return compatible
+
+def is_cache_compatible(shaded, rig):
+    compatible = get_cache_compatible_objects(shaded)
+    for obj in compatible:
+        if rig['code'] == obj['code']:
+            return True
+    return False
+
+def is_published_current(snapshot, ep1):
+    pass
+
 
