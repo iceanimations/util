@@ -5,7 +5,10 @@ This module can work both on server and client side.
 from site import addsitedir as asd
 asd(r"r:/Pipe_Repo/Users/Hussain/utilities/TACTIC")
 from datetime import datetime
+import tempfile
+import hashlib
 import json, os
+import shutil
 op = os.path
 
 _s = None
@@ -359,6 +362,27 @@ def get_assets(project, add_icons=False):
 
 all_assets = get_assets
 
+_icon_cache_dir = op.join(tempfile.gettempdir(), 'tactic_icon_cache')
+if not op.exists(_icon_cache_dir):
+    os.mkdir(_icon_cache_dir)
+
+def get_cached_icon(obj, default=None):
+    md5 = hashlib.md5(obj).hexdigest()
+    iconpath = op.join(_icon_cache_dir, md5)
+    if op.exists(iconpath) and op.isfile(iconpath):
+        return iconpath
+    return default
+
+def cache_icon(obj, path):
+    md5 = hashlib.md5(obj).hexdigest()
+    iconpath = op.join(_icon_cache_dir, md5)
+    if op.exists(path) and op.isfile(path):
+        if op.exists(iconpath):
+            os.remove(iconpath)
+        shutil.copyfile(path, iconpath)
+        return True
+    return False
+
 def get_icon(obj, mode='client_repo', file_type='icon'):
     ''' Get an icon for file, path, snapshot or sobject
 
@@ -366,19 +390,27 @@ def get_icon(obj, mode='client_repo', file_type='icon'):
     for which icon is required
     :type obj: dict or str or unicode
     '''
+    iconpath = ''
     try:
         if isinstance(obj, dict):
             obj = obj.get('__search_key__')
+        iconpath = get_cached_icon(obj)
+        if iconpath is not None:
+            return iconpath
         stype, code = _s.split_search_key(obj)
         if obj.startswith('sthpw/file'):
-            return get_file_icon(obj, mode=mode, file_type=file_type)
+            iconpath = get_file_icon(obj, mode=mode, file_type=file_type)
         elif obj.startswith('sthpw/snapshot'):
-            return get_snapshot_icon(obj, mode=mode, file_type=file_type)
+            iconpath = get_snapshot_icon(obj, mode=mode, file_type=file_type)
         elif obj.startswith('sthpw/task'):
-            return get_task_icon(obj, mode=mode, file_type=file_type)
-        return get_sobject_icon(obj, mode=mode, file_type=file_type)
+            iconpath = get_task_icon(obj, mode=mode, file_type=file_type)
+        else:
+            iconpath = get_sobject_icon(obj, mode=mode, file_type=file_type)
     except (AssertionError, ValueError, KeyError, AttributeError):
-        return get_path_icon(obj, mode=mode, file_type=file_type)
+        iconpath = get_path_icon(obj, mode=mode, file_type=file_type)
+    if iconpath:
+        cache_icon(obj, iconpath)
+    return iconpath
 
 
 def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
