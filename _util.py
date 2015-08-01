@@ -373,6 +373,7 @@ def get_cached_icon(obj, default=None):
     if _memory_icon_cache.has_key(obj):
         return _memory_icon_cache[obj]
     elif op.exists(iconpath) and op.isfile(iconpath):
+        _memory_icon_cache[obj]=iconpath
         return iconpath
     return default
 
@@ -415,6 +416,7 @@ def get_icon(obj, mode='client_repo', file_type='icon'):
         else:
             iconpath = get_sobject_icon(obj, mode=mode, file_type=file_type)
     except (AssertionError, ValueError, KeyError, AttributeError):
+        print 'getting path icon'
         iconpath = get_path_icon(obj, mode=mode, file_type=file_type)
     return cache_icon(obj, iconpath)
 
@@ -784,12 +786,13 @@ def publish_asset_to_episode(project_sk, episode, asset, snapshot, context,
     return newss
 
 
-def get_published_snapshots_in_episode(project_sk, episode, asset, context):
+def get_published_snapshots_in_episode(project_sk, episode, asset, context=None):
     pub_obj = get_episode_asset(project_sk, episode, asset)
     snapshots = []
     if pub_obj:
         snapshots = get_snapshot_from_sobject(pub_obj['__search_key__'])
-    snapshots = [ss for ss in snapshots if ss['context'] == context]
+    if context is not None:
+        snapshots = [ss for ss in snapshots if ss['context'] == context]
     return snapshots
 
 
