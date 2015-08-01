@@ -379,6 +379,7 @@ def get_cached_icon(obj, default=None):
 def cache_icon(obj, path):
     md5 = hashlib.md5(obj).hexdigest()
     iconpath = op.join(_icon_cache_dir, md5)
+    value = iconpath
     if op.exists(path) and op.isfile(path):
         if op.exists(iconpath):
             os.remove(iconpath)
@@ -386,6 +387,8 @@ def cache_icon(obj, path):
         _memory_icon_cache[obj]=iconpath
     else:
         _memory_icon_cache[obj]=path
+        value = path
+    return value
 
 def get_icon(obj, mode='client_repo', file_type='icon'):
     ''' Get an icon for file, path, snapshot or sobject
@@ -401,6 +404,7 @@ def get_icon(obj, mode='client_repo', file_type='icon'):
         iconpath = get_cached_icon(obj)
         if iconpath is not None:
             return iconpath
+
         stype, code = _s.split_search_key(obj)
         if obj.startswith('sthpw/file'):
             iconpath = get_file_icon(obj, mode=mode, file_type=file_type)
@@ -412,9 +416,7 @@ def get_icon(obj, mode='client_repo', file_type='icon'):
             iconpath = get_sobject_icon(obj, mode=mode, file_type=file_type)
     except (AssertionError, ValueError, KeyError, AttributeError):
         iconpath = get_path_icon(obj, mode=mode, file_type=file_type)
-    if iconpath:
-        cache_icon(obj, iconpath)
-    return iconpath
+    return cache_icon(obj, iconpath)
 
 def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     ''' get the icon path of the given sobject
