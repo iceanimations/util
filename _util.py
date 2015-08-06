@@ -366,22 +366,30 @@ _icon_cache_dir = op.join(tempfile.gettempdir(), 'tactic_icon_cache')
 if not op.exists(_icon_cache_dir):
     os.mkdir(_icon_cache_dir)
 
+_memory_icon_cache = {}
 def get_cached_icon(obj, default=None):
     md5 = hashlib.md5(obj).hexdigest()
     iconpath = op.join(_icon_cache_dir, md5)
-    if op.exists(iconpath) and op.isfile(iconpath):
+    if _memory_icon_cache.has_key(obj):
+        return _memory_icon_cache[obj]
+    elif op.exists(iconpath) and op.isfile(iconpath):
+        _memory_icon_cache[obj]=iconpath
         return iconpath
     return default
 
 def cache_icon(obj, path):
     md5 = hashlib.md5(obj).hexdigest()
     iconpath = op.join(_icon_cache_dir, md5)
+    value = iconpath
     if op.exists(path) and op.isfile(path):
         if op.exists(iconpath):
             os.remove(iconpath)
         shutil.copyfile(path, iconpath)
-        return True
-    return False
+        _memory_icon_cache[obj]=iconpath
+    else:
+        _memory_icon_cache[obj]=path
+        value = path
+    return value
 
 def get_icon(obj, mode='client_repo', file_type='icon'):
     ''' Get an icon for file, path, snapshot or sobject
@@ -397,6 +405,7 @@ def get_icon(obj, mode='client_repo', file_type='icon'):
         iconpath = get_cached_icon(obj)
         if iconpath is not None:
             return iconpath
+
         stype, code = _s.split_search_key(obj)
         if obj.startswith('sthpw/file'):
             iconpath = get_file_icon(obj, mode=mode, file_type=file_type)
@@ -407,11 +416,9 @@ def get_icon(obj, mode='client_repo', file_type='icon'):
         else:
             iconpath = get_sobject_icon(obj, mode=mode, file_type=file_type)
     except (AssertionError, ValueError, KeyError, AttributeError):
+        print 'getting path icon'
         iconpath = get_path_icon(obj, mode=mode, file_type=file_type)
-    if iconpath:
-        cache_icon(obj, iconpath)
-    return iconpath
-
+    return cache_icon(obj, iconpath)
 
 def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
     ''' get the icon path of the given sobject
@@ -436,7 +443,6 @@ def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
         return ''
 
     return get_snapshot_icon(iconss['code'], mode=mode, file_type=file_type)
-
 
 def get_task_icon(task, mode='client_repo', file_type='icon'):
     ''' return an icon for the given task by getting icon from associated
@@ -745,7 +751,6 @@ def copy_snapshot(snapshot_from, snapshot_to, mode='copy'):
 
     return True
 
-
 def get_episode_asset(project, episode, asset, force_create=False):
     proj = current_project()
     set_project(project)
@@ -781,12 +786,13 @@ def publish_asset_to_episode(project_sk, episode, asset, snapshot, context,
     return newss
 
 
-def get_published_snapshots_in_episode(project_sk, episode, asset, context):
+def get_published_snapshots_in_episode(project_sk, episode, asset, context=None):
     pub_obj = get_episode_asset(project_sk, episode, asset)
     snapshots = []
     if pub_obj:
         snapshots = get_snapshot_from_sobject(pub_obj['__search_key__'])
-    snapshots = [ss for ss in snapshots if ss['context'] == context]
+    if context is not None:
+        snapshots = [ss for ss in snapshots if ss['context'] == context]
     return snapshots
 
 
