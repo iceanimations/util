@@ -767,6 +767,35 @@ def get_episode_asset(project, episode, asset, force_create=False):
     set_project(proj)
     return obj
 
+def get_sequence_asset(project, sequence, asset, force_create=False):
+    proj = current_project()
+    set_project(project)
+
+    if force_create:
+        obj = _s.get_unique_sobject('vfx/asset_in_sequence', data={
+            'sequence_code': sequence['code'],
+            'asset_code': asset['code']})
+    else:
+        obj = _s.query('vfx/asset_in_sequence', filters=[('sequence_code',
+            sequence['code']), ('asset_code', asset['code'])], single=True)
+
+    set_project(proj)
+    return obj
+
+def get_shot_asset(project, shot, asset, force_create=False):
+    proj = current_project()
+    set_project(project)
+
+    if force_create:
+        obj = _s.get_unique_sobject('vfx/asset_in_shot', data={
+            'shot_code': shot['code'],
+            'asset_code': asset['code']})
+    else:
+        obj = _s.query('vfx/asset_in_sequence', filters=[('shot_code',
+            shot['code']), ('asset_code', asset['code'])], single=True)
+
+    set_project(proj)
+    return obj
 
 def publish_asset_to_episode(project_sk, episode, asset, snapshot, context,
         set_current=True):
@@ -785,7 +814,6 @@ def publish_asset_to_episode(project_sk, episode, asset, snapshot, context,
 
     return newss
 
-
 def get_published_snapshots_in_episode(project_sk, episode, asset, context=None):
     pub_obj = get_episode_asset(project_sk, episode, asset)
     snapshots = []
@@ -795,6 +823,23 @@ def get_published_snapshots_in_episode(project_sk, episode, asset, context=None)
         snapshots = [ss for ss in snapshots if ss['context'] == context]
     return snapshots
 
+def get_published_snapshots_in_sequence(project_sk, sequence, asset, context=None):
+    pub_obj = get_sequence_asset(project_sk, sequence, asset)
+    snapshots = []
+    if pub_obj:
+        snapshots = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    if context is not None:
+        snapshots = [ss for ss in snapshots if ss['context'] == context]
+    return snapshots
+
+def get_published_snapshots_in_shot(project_sk, shot, asset, context=None):
+    pub_obj = get_shot_asset(project_sk, shot, asset)
+    snapshots = []
+    if pub_obj:
+        snapshots = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    if context is not None:
+        snapshots = [ss for ss in snapshots if ss['context'] == context]
+    return snapshots
 
 def get_all_publish_targets(snapshot):
     server = _s
