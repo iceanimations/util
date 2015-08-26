@@ -797,10 +797,10 @@ def get_shot_asset(project, shot, asset, force_create=False):
     set_project(proj)
     return obj
 
-def publish_asset_to_episode(project_sk, episode, asset, snapshot, context,
+def publish_asset_to_episode(project, episode, asset, snapshot, context,
         set_current=True):
     server = _s
-    pub_obj = get_episode_asset(project_sk, episode, asset, True)
+    pub_obj = get_episode_asset(project, episode, asset, True)
 
     newss = server.create_snapshot(pub_obj, context=context,
             is_current=set_current, snapshot_type=snapshot['snapshot_type'])
@@ -811,6 +811,40 @@ def publish_asset_to_episode(project_sk, episode, asset, snapshot, context,
             type='ref', tag='publish_source')
     server.add_dependency_by_code(snapshot['code'], newss['code'],
             type='ref', tag='publish_target')
+
+    return newss
+
+def publish_asset_to_sequence(project, sequence, asset, snapshot, context,
+        set_current=True):
+    server = _s
+    pub_obj = get_sequence_asset(project, sequence, asset, True)
+
+    newss = server.create_snapshot(pub_obj, context=context,
+            is_current=set_current, snapshot_type=snapshot['snapshot_type'])
+
+    copy_snapshot(snapshot, newss)
+
+    server.add_dependency_by_code(newss['code'], snapshot['code'], type='ref',
+            tag='publish_source')
+    server.add_dependency_by_code(snapshot['code'], newss['code'], type='ref',
+            tag='publish_target')
+
+    return newss
+
+def publish_asset_to_shot(project, shot, asset, snapshot, context,
+        set_current=True):
+    server = _s
+    pub_obj = get_shot_asset(project, shot, asset, True)
+
+    newss = server.create_snapshot(pub_obj, context=context,
+            is_current=set_current, snapshot_type=snapshot['snapshot_type'])
+
+    copy_snapshot(snapshot, newss)
+
+    server.add_dependency_by_code(newss['code'], snapshot['code'], type='ref',
+            tag='publish_source')
+    server.add_dependency_by_code(snapshot['code'], newss['code'], type='ref',
+            tag='publish_target')
 
     return newss
 
