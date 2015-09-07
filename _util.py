@@ -797,6 +797,17 @@ def get_shot_asset(project, shot, asset, force_create=False):
     set_project(proj)
     return obj
 
+def get_production_asset(project, prod_elem, asset, force_create=False):
+    search_type = _s.split_search_key(prod_elem['__search_key__'])[0]
+    func = None
+    if search_type.startswith('vfx/episode'):
+        func = get_episode_asset()
+    elif search_type.startswith('vfx/sequence'):
+        func = get_sequence_asset()
+    elif search_type.startswith('vfx/shot'):
+        func = get_shot_asset()
+    return func(project, prod_elem, asset, force_create)
+
 def publish_asset_to_episode(project, episode, asset, snapshot, context,
         set_current=True):
     server = _s
@@ -847,6 +858,32 @@ def publish_asset_to_shot(project, shot, asset, snapshot, context,
             tag='publish_target')
 
     return newss
+
+def add_publish_dependency(source, target):
+    server = _s
+    server.add_dependency_by_code(target['code'], source['code'], type='ref',
+            tag='publish_source')
+    server.add_dependency_by_code(source['code'], target['code'], type='ref',
+            tag='publish_target')
+    return True
+
+def get_texture_snapshot(asset, snapshot, version=-1, versionless=False):
+    server = _s
+    texture_context = get_texture_context(snapshot)
+    textures = server.get_all_children(asset['__search_key__'], 'vfx/texture')
+    texture_snap = {}
+    if textures:
+        texture_child = textures[0]
+        texture_snap = server.get_snapshot(texture_child['__search_key__'],
+                context = texture_context, version=-1, versionless=True)
+    return texture_snap
+
+def get_texture_context(snapshot):
+    context = snapshot['context'].split('/')
+    if context[0] != 'shaded':
+        return
+    texture_context = '/'.join(['texture'] + context[1:])
+    return texture_context
 
 def get_published_snapshots_in_episode(project_sk, episode, asset, context=None):
     pub_obj = get_episode_asset(project_sk, episode, asset)
@@ -924,5 +961,4 @@ def is_cache_compatible(shaded, rig):
 
 def is_published_current(snapshot, ep1):
     pass
-
 
