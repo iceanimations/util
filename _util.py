@@ -801,11 +801,11 @@ def get_production_asset(project, prod_elem, asset, force_create=False):
     search_type = _s.split_search_key(prod_elem['__search_key__'])[0]
     func = None
     if search_type.startswith('vfx/episode'):
-        func = get_episode_asset()
+        func = get_episode_asset
     elif search_type.startswith('vfx/sequence'):
-        func = get_sequence_asset()
+        func = get_sequence_asset
     elif search_type.startswith('vfx/shot'):
-        func = get_shot_asset()
+        func = get_shot_asset
     return func(project, prod_elem, asset, force_create)
 
 def publish_asset_to_episode(project, episode, asset, snapshot, context,
@@ -859,6 +859,21 @@ def publish_asset_to_shot(project, shot, asset, snapshot, context,
 
     return newss
 
+def publish_asset(project, prod_elem, asset, snapshot, context,
+        set_current=True):
+    server = _s
+    pub_obj = get_production_asset(project, prod_elem, asset,
+            force_create=True)
+
+    newss = server.create_snapshot(pub_obj, context=context,
+            is_current=set_current, snapshot_type=snapshot['snapshot_type'])
+
+    copy_snapshot(snapshot, newss)
+    add_publish_dependency(snapshot, newss)
+
+    return newss
+
+
 def add_publish_dependency(source, target):
     server = _s
     server.add_dependency_by_code(target['code'], source['code'], type='ref',
@@ -875,8 +890,16 @@ def get_texture_snapshot(asset, snapshot, version=-1, versionless=False):
     if textures:
         texture_child = textures[0]
         texture_snap = server.get_snapshot(texture_child['__search_key__'],
-                context = texture_context, version=-1, versionless=True)
+                context = texture_context, version=version,
+                versionless=versionless)
     return texture_snap
+
+def get_published_texture_snapshot(prod_asset, snapshot, version=-1,
+        versionless=False):
+    server = _s
+    texture_context = get_texture_context(snapshot)
+    return server.get_snapshot(prod_asset['__search_key__'],
+            context=texture_context, version=version, versionless=versionless)
 
 def get_texture_context(snapshot):
     context = snapshot['context'].split('/')
@@ -912,6 +935,15 @@ def get_published_snapshots_in_shot(project_sk, shot, asset, context=None):
         snapshots = [ss for ss in snapshots if ss['context'] == context]
     return snapshots
 
+def get_published_snapshots(project_sk, prod_elem, asset, context=None):
+    pub_obj = get_production_asset(project_sk, prod_elem, asset)
+    snapshots = []
+    if pub_obj:
+        snapshots = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    if context is not None:
+        snapshots = [ss for ss in snapshots if ss['context'] == context]
+    return snapshots
+
 def get_all_publish_targets(snapshot):
     server = _s
     return server.get_dependencies(snapshot, tag='publish_target')
@@ -922,6 +954,18 @@ def get_published_targets_in_episode(snapshot, project_sk, episode):
     if not asset:
         asset = server.get_parent(snapshot)
     pub_obj = get_episode_asset(project_sk, episode, asset)
+    targets = get_all_publish_targets(snapshot)
+    published = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    result = [target for target in targets for pub in published if
+            target['code'] == pub['code']]
+    return result
+
+def get_published_targets(snapshot, project, prod_elem):
+    server = _s
+    asset = snapshot.get('asset')
+    if not asset:
+        asset = server.get_parent(snapshot)
+    pub_obj = get_episode_asset(project, prod_elem, asset)
     targets = get_all_publish_targets(snapshot)
     published = get_snapshot_from_sobject(pub_obj['__search_key__'])
     result = [target for target in targets for pub in published if
