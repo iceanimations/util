@@ -598,7 +598,6 @@ def copy_snapshot(snapshot_from, snapshot_to, mode='copy'):
 #                                    icons                                    #
 ###############################################################################
 
-
 _memory_icon_cache = {}
 def get_cached_icon(obj, default=None):
     md5 = hashlib.md5(obj).hexdigest()
@@ -937,6 +936,18 @@ def get_texture_snapshot(asset, snapshot, version=-1, versionless=False):
                 versionless=versionless)
     return texture_snap
 
+def get_texture_by_dependency(snapshot):
+    texture = {}
+    rootContext = snapshot['context'].split('/')[0]
+    if rootContext == 'shaded':
+        deps = get_dependencies(snapshot, keyword='texture',
+                source=False)[0]
+        try:
+            texture = deps[0]
+        except:
+            pass
+    return texture
+
 def get_published_texture_snapshot(prod_asset, snapshot, version=0,
         versionless=False):
     server = _s
@@ -954,15 +965,15 @@ def get_texture_context(snapshot):
 
 
 ###############################################################################
-#                                 depedencies                                 #
+#                                 dependencies                                #
 ###############################################################################
 
 dependency_tags_map = {
         'publish': ('source', 'target'),
-        'texture': ('images', 'model'),
+        'texture': ('model', 'images'),
         'combined': ('separate', 'combined'),
         'cache': ('compatible_shaded', 'compatible_rig'),
-        'default': ('source', 'target'),
+        'default': ('forward', 'backward'),
 }
 
 def get_dependency_tags(keyword='default'):
@@ -984,7 +995,7 @@ def add_dependency(source, target, keyword='default'):
 def get_dependencies(snapshot, keyword='default', source=True):
     server = _s
     source_tag, target_tag = get_dependency_tags(keyword)
-    server.get_dependencies(snapshot, source_tag if source else target_tag)
+    return server.get_dependencies(snapshot, tag=source_tag if source else target_tag)
 
 def add_publish_dependency(source, target):
     return add_dependency(source, target, keyword='publish')
