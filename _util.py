@@ -974,6 +974,7 @@ dependency_tags_map = {
         'combined': ('separate', 'combined'),
         'cache': ('compatible_shaded', 'compatible_rig'),
         'default': ('forward', 'backward'),
+        'mayagpucache': ('mayafile', 'gpucache')
 }
 
 def get_dependency_tags(keyword='default'):
@@ -1008,7 +1009,15 @@ def link_shaded_to_rig(shaded, rig):
 add_cache_dependency = link_shaded_to_rig
 
 def add_combined_dependency(separate, combined):
-    return add_combined_dependency(separate, combined, keyword='combined')
+    return add_dependency(separate, combined, keyword='combined')
+
+def get_combined_version(snapshot):
+    dep = get_dependencies(snapshot, keyword='combined', source=False)
+    return dep[0] if dep else {}
+
+def get_separate_version(snapshot):
+    dep = get_dependencies(snapshot, keyword='combined', source=True)
+    return dep[0] if dep else {}
 
 def get_publish_source(snapshot):
     dep = get_dependencies(snapshot, keyword='publish', source=True)
