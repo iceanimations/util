@@ -926,6 +926,8 @@ def get_published_snapshots(project_sk, prod_elem, asset, context=None):
 
 def get_texture_snapshot(asset, snapshot, version=-1, versionless=False):
     server = _s
+    if not isinstance(asset, dict):
+        asset = server.get_by_search_key(asset)
     texture_context = get_texture_context(snapshot)
     textures = server.get_all_children(asset['__search_key__'], 'vfx/texture')
     texture_snap = {}
