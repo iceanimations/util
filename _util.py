@@ -801,7 +801,7 @@ def get_shot_asset(project, shot, asset, force_create=False):
             'shot_code': shot['code'],
             'asset_code': asset['code']})
     else:
-        obj = _s.query('vfx/asset_in_sequence', filters=[('shot_code',
+        obj = _s.query('vfx/asset_in_shot', filters=[('shot_code',
             shot['code']), ('asset_code', asset['code'])], single=True)
 
     set_project(proj)
