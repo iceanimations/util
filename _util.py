@@ -366,164 +366,6 @@ _icon_cache_dir = op.join(tempfile.gettempdir(), 'tactic_icon_cache')
 if not op.exists(_icon_cache_dir):
     os.mkdir(_icon_cache_dir)
 
-_memory_icon_cache = {}
-def get_cached_icon(obj, default=None):
-    md5 = hashlib.md5(obj).hexdigest()
-    iconpath = op.join(_icon_cache_dir, md5)
-    if _memory_icon_cache.has_key(obj):
-        return _memory_icon_cache[obj]
-    elif op.exists(iconpath) and op.isfile(iconpath):
-        _memory_icon_cache[obj]=iconpath
-        return iconpath
-    return default
-
-def cache_icon(obj, path):
-    md5 = hashlib.md5(obj).hexdigest()
-    iconpath = op.join(_icon_cache_dir, md5)
-    value = iconpath
-    if op.exists(path) and op.isfile(path):
-        if op.exists(iconpath):
-            os.remove(iconpath)
-        shutil.copyfile(path, iconpath)
-        _memory_icon_cache[obj]=iconpath
-    else:
-        _memory_icon_cache[obj]=path
-        value = path
-    return value
-
-def get_icon(obj, mode='client_repo', file_type='icon'):
-    ''' Get an icon for file, path, snapshot or sobject
-
-    :param obj: filepath or skey or sobject dict of file, snapshot or sobject
-    for which icon is required
-    :type obj: dict or str or unicode
-    '''
-    iconpath = ''
-    try:
-        if isinstance(obj, dict):
-            obj = obj.get('__search_key__')
-        iconpath = get_cached_icon(obj)
-        if iconpath is not None:
-            return iconpath
-
-        stype, code = _s.split_search_key(obj)
-        if obj.startswith('sthpw/file'):
-            iconpath = get_file_icon(obj, mode=mode, file_type=file_type)
-        elif obj.startswith('sthpw/snapshot'):
-            iconpath = get_snapshot_icon(obj, mode=mode, file_type=file_type)
-        elif obj.startswith('sthpw/task'):
-            iconpath = get_task_icon(obj, mode=mode, file_type=file_type)
-        else:
-            iconpath = get_sobject_icon(obj, mode=mode, file_type=file_type)
-    except (AssertionError, ValueError, KeyError, AttributeError):
-        print 'getting path icon'
-        iconpath = get_path_icon(obj, mode=mode, file_type=file_type)
-    return cache_icon(obj, iconpath)
-
-def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
-    ''' get the icon path of the given sobject
-
-    @param sobject: sobject searchkey for which the icon is required
-    @keyparam mode: the type of the path required, leave it to default
-    client_repo for production utilities
-    @keyparam file_type: the type of file required, only 'main', 'icon' and
-    'web' are relevant
-    '''
-    process = None
-    context = 'icon'
-    if sobject_skey.find('>') >= 0:
-        parts = sobject_skey.split('>')
-        sobject_skey = parts[0]
-        process = parts[1]
-        context = parts[1] if len(parts) == 2 else '/'.join(parts[2:])
-
-    iconss = _s.get_snapshot(sobject_skey, context=context, version=0,
-            process=process)
-    if not iconss.get('code'):
-        return ''
-
-    return get_snapshot_icon(iconss['code'], mode=mode, file_type=file_type)
-
-def get_task_icon(task, mode='client_repo', file_type='icon'):
-    ''' return an icon for the given task by getting icon from associated
-    sobject '''
-    task_skey = task
-    context=None
-    if isinstance(task, dict):
-        task_skey = task.get('__search_key__')
-    else:
-        if task_skey.find('>') >= 0:
-            task_skey, context = task_skey.split('>')
-        try:
-            task = _s.get_by_search_key(task_skey)
-        except:
-            task = None
-
-    if not task_skey or not task:
-        return ''
-
-    sobject_skey = get_sobject_from_task(task)
-    if not sobject_skey:
-        return ''
-
-    if context:
-        process = task.get('process')
-        if not process:
-            process = context.split('/')[0]
-        sobject_skey += '>' + process + '>' + context
-
-    return get_sobject_icon(sobject_skey, mode=mode, file_type=file_type)
-
-
-def get_path_icon(path, mode='client_repo', file_type='icon'):
-    ''' return the icon for a given path in client_repo '''
-    basedir = op.normcase( op.normpath(
-                _s.get_base_dirs()['win32_client_repo_dir']))
-    path = op.normcase(op.normpath(path))
-    try:
-        relative_dir = op.relpath(path, basedir)
-    except ValueError:
-        return ''
-    relative_dir, file_name = op.split(relative_dir)
-    file_sobj = _s.query('sthpw/file', filters=[ ('relative_dir',
-        relative_dir.replace('\\', '/')), ('file_name', file_name)],
-        single = True)
-    if file_sobj:
-        return get_file_icon(file_sobj, mode=mode, file_type=file_type)
-    return ''
-
-
-def get_file_icon(file_sobject, mode='client_repo', file_type='icon'):
-    ''' get an icon from the snapshot given a file sobject '''
-    sscode = file_sobject.get('snapshot_code')
-    if not sscode:
-        ss = _s.query('sthpw/file', filters=[('code', file_sobject['code'])],
-                columns = ['snapshot_code'], single=True)
-        if ss:
-            sscode = ss['snapshot_code']
-        else:
-            return ''
-    return get_snapshot_icon(sscode, mode=mode, file_type=file_type)
-
-
-def get_snapshot_icon(snapshot_code, mode='client_repo', file_type='icon'):
-    ''' get the icon path of the given sobject
-
-    @param snapshot_code: sobject searchkey for which the icon is required
-    @keyparam mode: the type of the path required, leave it to default
-    client_repo for production utilities
-    @keyparam file_type: the type of file required, only 'main', 'icon' and
-    'web' are relevant
-    '''
-    file_types = []
-    file_types.append(file_type)
-    filepath = _s.get_all_paths_from_snapshot(snapshot_code, mode=mode,
-            file_types=file_types)
-    if filepath:
-        filepath=filepath[0]
-    return filepath
-
-
 def get_assets_in_shot(project, shot):
     '''
     @project: project search key
@@ -751,6 +593,174 @@ def copy_snapshot(snapshot_from, snapshot_to, mode='copy'):
 
     return True
 
+
+###############################################################################
+#                                    icons                                    #
+###############################################################################
+
+_memory_icon_cache = {}
+def get_cached_icon(obj, default=None):
+    md5 = hashlib.md5(obj).hexdigest()
+    iconpath = op.join(_icon_cache_dir, md5)
+    if _memory_icon_cache.has_key(obj):
+        return _memory_icon_cache[obj]
+    elif op.exists(iconpath) and op.isfile(iconpath):
+        _memory_icon_cache[obj]=iconpath
+        return iconpath
+    return default
+
+def cache_icon(obj, path):
+    md5 = hashlib.md5(obj).hexdigest()
+    iconpath = op.join(_icon_cache_dir, md5)
+    value = iconpath
+    if op.exists(path) and op.isfile(path):
+        if op.exists(iconpath):
+            os.remove(iconpath)
+        shutil.copyfile(path, iconpath)
+        _memory_icon_cache[obj]=iconpath
+    else:
+        _memory_icon_cache[obj]=path
+        value = path
+    return value
+
+def get_icon(obj, mode='client_repo', file_type='icon'):
+    ''' Get an icon for file, path, snapshot or sobject
+
+    :param obj: filepath or skey or sobject dict of file, snapshot or sobject
+    for which icon is required
+    :type obj: dict or str or unicode
+    '''
+    iconpath = ''
+    try:
+        if isinstance(obj, dict):
+            obj = obj.get('__search_key__')
+        iconpath = get_cached_icon(obj)
+        if iconpath is not None:
+            return iconpath
+
+        stype, code = _s.split_search_key(obj)
+        if obj.startswith('sthpw/file'):
+            iconpath = get_file_icon(obj, mode=mode, file_type=file_type)
+        elif obj.startswith('sthpw/snapshot'):
+            iconpath = get_snapshot_icon(obj, mode=mode, file_type=file_type)
+        elif obj.startswith('sthpw/task'):
+            iconpath = get_task_icon(obj, mode=mode, file_type=file_type)
+        else:
+            iconpath = get_sobject_icon(obj, mode=mode, file_type=file_type)
+    except (AssertionError, ValueError, KeyError, AttributeError):
+        print 'getting path icon'
+        iconpath = get_path_icon(obj, mode=mode, file_type=file_type)
+    return cache_icon(obj, iconpath)
+
+def get_sobject_icon(sobject_skey, mode='client_repo', file_type='icon'):
+    ''' get the icon path of the given sobject
+
+    @param sobject: sobject searchkey for which the icon is required
+    @keyparam mode: the type of the path required, leave it to default
+    client_repo for production utilities
+    @keyparam file_type: the type of file required, only 'main', 'icon' and
+    'web' are relevant
+    '''
+    process = None
+    context = 'icon'
+    if sobject_skey.find('>') >= 0:
+        parts = sobject_skey.split('>')
+        sobject_skey = parts[0]
+        process = parts[1]
+        context = parts[1] if len(parts) == 2 else '/'.join(parts[2:])
+
+    iconss = _s.get_snapshot(sobject_skey, context=context, version=0,
+            process=process)
+    if not iconss.get('code'):
+        return ''
+
+    return get_snapshot_icon(iconss['code'], mode=mode, file_type=file_type)
+
+def get_task_icon(task, mode='client_repo', file_type='icon'):
+    ''' return an icon for the given task by getting icon from associated
+    sobject '''
+    task_skey = task
+    context=None
+    if isinstance(task, dict):
+        task_skey = task.get('__search_key__')
+    else:
+        if task_skey.find('>') >= 0:
+            task_skey, context = task_skey.split('>')
+        try:
+            task = _s.get_by_search_key(task_skey)
+        except:
+            task = None
+
+    if not task_skey or not task:
+        return ''
+
+    sobject_skey = get_sobject_from_task(task)
+    if not sobject_skey:
+        return ''
+
+    if context:
+        process = task.get('process')
+        if not process:
+            process = context.split('/')[0]
+        sobject_skey += '>' + process + '>' + context
+
+    return get_sobject_icon(sobject_skey, mode=mode, file_type=file_type)
+
+
+def get_path_icon(path, mode='client_repo', file_type='icon'):
+    ''' return the icon for a given path in client_repo '''
+    basedir = op.normcase( op.normpath(
+                _s.get_base_dirs()['win32_client_repo_dir']))
+    path = op.normcase(op.normpath(path))
+    try:
+        relative_dir = op.relpath(path, basedir)
+    except ValueError:
+        return ''
+    relative_dir, file_name = op.split(relative_dir)
+    file_sobj = _s.query('sthpw/file', filters=[ ('relative_dir',
+        relative_dir.replace('\\', '/')), ('file_name', file_name)],
+        single = True)
+    if file_sobj:
+        return get_file_icon(file_sobj, mode=mode, file_type=file_type)
+    return ''
+
+
+def get_file_icon(file_sobject, mode='client_repo', file_type='icon'):
+    ''' get an icon from the snapshot given a file sobject '''
+    sscode = file_sobject.get('snapshot_code')
+    if not sscode:
+        ss = _s.query('sthpw/file', filters=[('code', file_sobject['code'])],
+                columns = ['snapshot_code'], single=True)
+        if ss:
+            sscode = ss['snapshot_code']
+        else:
+            return ''
+    return get_snapshot_icon(sscode, mode=mode, file_type=file_type)
+
+
+def get_snapshot_icon(snapshot_code, mode='client_repo', file_type='icon'):
+    ''' get the icon path of the given sobject
+
+    @param snapshot_code: sobject searchkey for which the icon is required
+    @keyparam mode: the type of the path required, leave it to default
+    client_repo for production utilities
+    @keyparam file_type: the type of file required, only 'main', 'icon' and
+    'web' are relevant
+    '''
+    file_types = []
+    file_types.append(file_type)
+    filepath = _s.get_all_paths_from_snapshot(snapshot_code, mode=mode,
+            file_types=file_types)
+    if filepath:
+        filepath=filepath[0]
+    return filepath
+
+
+###############################################################################
+#                      Publishing and Production Assets                       #
+###############################################################################
+
+
 def get_episode_asset(project, episode, asset, force_create=False):
     proj = current_project()
     set_project(project)
@@ -767,11 +777,51 @@ def get_episode_asset(project, episode, asset, force_create=False):
     set_project(proj)
     return obj
 
+def get_sequence_asset(project, sequence, asset, force_create=False):
+    proj = current_project()
+    set_project(project)
 
-def publish_asset_to_episode(project_sk, episode, asset, snapshot, context,
+    if force_create:
+        obj = _s.get_unique_sobject('vfx/asset_in_sequence', data={
+            'sequence_code': sequence['code'],
+            'asset_code': asset['code']})
+    else:
+        obj = _s.query('vfx/asset_in_sequence', filters=[('sequence_code',
+            sequence['code']), ('asset_code', asset['code'])], single=True)
+
+    set_project(proj)
+    return obj
+
+def get_shot_asset(project, shot, asset, force_create=False):
+    proj = current_project()
+    set_project(project)
+
+    if force_create:
+        obj = _s.get_unique_sobject('vfx/asset_in_shot', data={
+            'shot_code': shot['code'],
+            'asset_code': asset['code']})
+    else:
+        obj = _s.query('vfx/asset_in_shot', filters=[('shot_code',
+            shot['code']), ('asset_code', asset['code'])], single=True)
+
+    set_project(proj)
+    return obj
+
+def get_production_asset(project, prod_elem, asset, force_create=False):
+    search_type = _s.split_search_key(prod_elem['__search_key__'])[0]
+    func = None
+    if search_type.startswith('vfx/episode'):
+        func = get_episode_asset
+    elif search_type.startswith('vfx/sequence'):
+        func = get_sequence_asset
+    elif search_type.startswith('vfx/shot'):
+        func = get_shot_asset
+    return func(project, prod_elem, asset, force_create)
+
+def publish_asset_to_episode(project, episode, asset, snapshot, context,
         set_current=True):
     server = _s
-    pub_obj = get_episode_asset(project_sk, episode, asset, True)
+    pub_obj = get_episode_asset(project, episode, asset, True)
 
     newss = server.create_snapshot(pub_obj, context=context,
             is_current=set_current, snapshot_type=snapshot['snapshot_type'])
@@ -785,6 +835,53 @@ def publish_asset_to_episode(project_sk, episode, asset, snapshot, context,
 
     return newss
 
+def publish_asset_to_sequence(project, sequence, asset, snapshot, context,
+        set_current=True):
+    server = _s
+    pub_obj = get_sequence_asset(project, sequence, asset, True)
+
+    newss = server.create_snapshot(pub_obj, context=context,
+            is_current=set_current, snapshot_type=snapshot['snapshot_type'])
+
+    copy_snapshot(snapshot, newss)
+
+    server.add_dependency_by_code(newss['code'], snapshot['code'], type='ref',
+            tag='publish_source')
+    server.add_dependency_by_code(snapshot['code'], newss['code'], type='ref',
+            tag='publish_target')
+
+    return newss
+
+def publish_asset_to_shot(project, shot, asset, snapshot, context,
+        set_current=True):
+    server = _s
+    pub_obj = get_shot_asset(project, shot, asset, True)
+
+    newss = server.create_snapshot(pub_obj, context=context,
+            is_current=set_current, snapshot_type=snapshot['snapshot_type'])
+
+    copy_snapshot(snapshot, newss)
+
+    server.add_dependency_by_code(newss['code'], snapshot['code'], type='ref',
+            tag='publish_source')
+    server.add_dependency_by_code(snapshot['code'], newss['code'], type='ref',
+            tag='publish_target')
+
+    return newss
+
+def publish_asset(project, prod_elem, asset, snapshot, context,
+        set_current=True):
+    server = _s
+    pub_obj = get_production_asset(project, prod_elem, asset,
+            force_create=True)
+
+    newss = server.create_snapshot(pub_obj, context=context,
+            is_current=set_current, snapshot_type=snapshot['snapshot_type'])
+
+    copy_snapshot(snapshot, newss)
+    add_publish_dependency(snapshot, newss)
+
+    return newss
 
 def get_published_snapshots_in_episode(project_sk, episode, asset, context=None):
     pub_obj = get_episode_asset(project_sk, episode, asset)
@@ -795,10 +892,141 @@ def get_published_snapshots_in_episode(project_sk, episode, asset, context=None)
         snapshots = [ss for ss in snapshots if ss['context'] == context]
     return snapshots
 
+def get_published_snapshots_in_sequence(project_sk, sequence, asset, context=None):
+    pub_obj = get_sequence_asset(project_sk, sequence, asset)
+    snapshots = []
+    if pub_obj:
+        snapshots = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    if context is not None:
+        snapshots = [ss for ss in snapshots if ss['context'] == context]
+    return snapshots
+
+def get_published_snapshots_in_shot(project_sk, shot, asset, context=None):
+    pub_obj = get_shot_asset(project_sk, shot, asset)
+    snapshots = []
+    if pub_obj:
+        snapshots = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    if context is not None:
+        snapshots = [ss for ss in snapshots if ss['context'] == context]
+    return snapshots
+
+def get_published_snapshots(project_sk, prod_elem, asset, context=None):
+    pub_obj = get_production_asset(project_sk, prod_elem, asset)
+    snapshots = []
+    if pub_obj:
+        snapshots = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    if context is not None:
+        snapshots = [ss for ss in snapshots if ss['context'] == context]
+    return snapshots
+
+
+###############################################################################
+#                                  textures                                   #
+###############################################################################
+
+def get_texture_snapshot(asset, snapshot, version=-1, versionless=False):
+    server = _s
+    if not isinstance(asset, dict):
+        asset = server.get_by_search_key(asset)
+    texture_context = get_texture_context(snapshot)
+    textures = server.get_all_children(asset['__search_key__'], 'vfx/texture')
+    texture_snap = {}
+    if textures:
+        texture_child = textures[0]
+        texture_snap = server.get_snapshot(texture_child['__search_key__'],
+                context = texture_context, version=version,
+                versionless=versionless)
+    return texture_snap
+
+def get_texture_by_dependency(snapshot):
+    texture = {}
+    rootContext = snapshot['context'].split('/')[0]
+    if rootContext == 'shaded':
+        deps = get_dependencies(snapshot, keyword='texture',
+                source=False)[0]
+        try:
+            texture = deps[0]
+        except:
+            pass
+    return texture
+
+def get_published_texture_snapshot(prod_asset, snapshot, version=0,
+        versionless=False):
+    server = _s
+    texture_context = get_texture_context(snapshot)
+    print texture_context, version, versionless, prod_asset['__search_key__']
+    return server.get_snapshot(prod_asset['__search_key__'],
+            context=texture_context, version=version, versionless=versionless)
+
+def get_texture_context(snapshot):
+    context = snapshot['context'].split('/')
+    if context[0] != 'shaded':
+        return
+    texture_context = '/'.join(['texture'] + context[1:])
+    return texture_context
+
+
+###############################################################################
+#                                 dependencies                                #
+###############################################################################
+
+dependency_tags_map = {
+        'publish': ('source', 'target'),
+        'texture': ('model', 'images'),
+        'combined': ('separate', 'combined'),
+        'cache': ('compatible_shaded', 'compatible_rig'),
+        'default': ('forward', 'backward'),
+        'mayagpucache': ('mayafile', 'gpucache')
+}
+
+def get_dependency_tags(keyword='default'):
+    default = dependency_tags_map['default']
+    source_tag, target_tag = dependency_tags_map.get(keyword, default)
+    source_tag = '_'.join([keyword, source_tag])
+    target_tag = '_'.join([keyword, target_tag])
+    return source_tag, target_tag
+
+def add_dependency(source, target, keyword='default'):
+    server = _s
+    source_tag, target_tag = get_dependency_tags(keyword)
+    server.add_dependency_by_code(target['code'], source['code'], type='ref',
+            tag=source_tag)
+    server.add_dependency_by_code(source['code'], target['code'], type='ref',
+            tag=target_tag)
+    return True
+
+def get_dependencies(snapshot, keyword='default', source=True):
+    server = _s
+    source_tag, target_tag = get_dependency_tags(keyword)
+    return server.get_dependencies(snapshot, tag=source_tag if source else target_tag)
+
+def add_publish_dependency(source, target):
+    return add_dependency(source, target, keyword='publish')
+
+def add_texture_dependency(shaded, texture):
+    return add_dependency(shaded, texture, keyword='texture')
+
+def link_shaded_to_rig(shaded, rig):
+    return add_dependency(shaded, rig, keyword='cache')
+add_cache_dependency = link_shaded_to_rig
+
+def add_combined_dependency(separate, combined):
+    return add_dependency(separate, combined, keyword='combined')
+
+def get_combined_version(snapshot):
+    dep = get_dependencies(snapshot, keyword='combined', source=False)
+    return dep[0] if dep else {}
+
+def get_separate_version(snapshot):
+    dep = get_dependencies(snapshot, keyword='combined', source=True)
+    return dep[0] if dep else {}
+
+def get_publish_source(snapshot):
+    dep = get_dependencies(snapshot, keyword='publish', source=True)
+    return dep[0] if dep else {}
 
 def get_all_publish_targets(snapshot):
-    server = _s
-    return server.get_dependencies(snapshot, tag='publish_target')
+    return get_dependencies(snapshot, keyword='publish', source=False)
 
 def get_published_targets_in_episode(snapshot, project_sk, episode):
     server = _s
@@ -812,28 +1040,24 @@ def get_published_targets_in_episode(snapshot, project_sk, episode):
             target['code'] == pub['code']]
     return result
 
-def get_publish_source(snapshot):
+def get_published_targets(snapshot, project, prod_elem):
     server = _s
-    dep = server.get_dependencies(snapshot, tag='publish_source')
-    return dep[0] if dep else {}
-
-def link_shaded_to_rig(shaded, rig):
-    ''' link shaded to rig '''
-    server = _s
-    server.add_dependency_by_code(shaded['code'], rig['code'], type='ref',
-            tag='cache_compatible_rig')
-    server.add_dependency_by_code(rig['code'], shaded['code'], type='ref',
-            tag='cache_compatible_shaded')
+    asset = snapshot.get('asset')
+    if not asset:
+        asset = server.get_parent(snapshot)
+    pub_obj = get_episode_asset(project, prod_elem, asset)
+    targets = get_all_publish_targets(snapshot)
+    published = get_snapshot_from_sobject(pub_obj['__search_key__'])
+    result = [target for target in targets for pub in published if
+            target['code'] == pub['code']]
+    return result
 
 def get_cache_compatible_objects(snapshot):
-    server = _s
     compatible = []
     if snapshot['context'].split('/')[0] == 'rig':
-        compatible = server.get_dependencies(snapshot,
-                tag='cache_compatible_shaded')
+        compatible = get_dependencies(snapshot, keyword='cache', source=True)
     elif snapshot['context'].split('/')[0] == 'shaded':
-        compatible = server.get_dependencies(snapshot,
-                tag='cache_compatible_rig')
+        compatible = get_dependencies(snapshot, keyword='cache', source=False)
     return compatible
 
 def is_cache_compatible(shaded, rig):
@@ -842,8 +1066,4 @@ def is_cache_compatible(shaded, rig):
         if rig['code'] == obj['code']:
             return True
     return False
-
-def is_published_current(snapshot, ep1):
-    pass
-
 
