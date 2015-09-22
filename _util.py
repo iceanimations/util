@@ -9,6 +9,7 @@ import tempfile
 import hashlib
 import json, os
 import shutil
+import iutil
 op = os.path
 
 _s = None
@@ -72,6 +73,59 @@ except Exception as e:
     #set_server(TacticServerStub.get(setup=False))
     from auth import user as USER
     set_server(USER.TacticServer(setup=False))
+
+def checkout(*args, **kargs):
+    ''' a wrapper over server.checkout that can checkout versionless files in
+    copy mode '''
+    server = _s
+
+    versionless = kargs.pop('versionless', False)
+    if not versionless:
+        return server.checkout(*args, **kargs)
+
+    context = kargs.get('context', 'publish')
+    version = kargs.get('version', -1)
+    file_types = kargs.get('file_type', [])
+    to_dir = kargs.get('to_dir', '.')
+    to_sandbox_dir= kargs.get('to_sandbox_dir', False)
+
+    assert version in (0,-1)
+    snapshot = server.get_snapshot(args[0], context=context,
+            version=version, versionless=versionless)
+    sources = server.get_all_paths_from_snapshot(snapshot['code'],
+            file_types=file_types, mode='client_repo')
+
+    if to_sandbox_dir:
+        destinations = server.get_all_paths_from_snapshot(snapshot['code'],
+                file_types=file_types, mode='sandbox')
+    else:
+        destinations = [os.path.join(to_dir, os.path.basename(source))
+                for source in sources]
+
+    def mkdir(path, mode=0777):
+
+        parent=os.path.dirname(path)
+        if parent and not os.path.exists(parent):
+            mkdir(parent, mode=mode)
+
+        try:
+            os.mkdir(path, mode)
+        except Exception:
+            return False
+
+        return True
+
+    paths = []
+    for src, dst in zip(sources, destinations):
+        if os.path.isdir(src):
+            shutil.copytree(src, dst)
+        elif os.path.isfile(src):
+            mkdir(os.path.dirname(dst))
+            shutil.copy2(src, dst)
+        paths.append(dst)
+
+    return paths
+
 
 def all_task_processes(project, tasks = None):
     processes = set([task["process"] for task in (all_tasks(project)
