@@ -862,7 +862,8 @@ def get_shot_asset(project, shot, asset, force_create=False):
     return obj
 
 def get_production_asset(project, prod_elem, asset, force_create=False):
-    search_type = _s.split_search_key(prod_elem['__search_key__'])[0]
+    server = _s
+    search_type = server.split_search_key(prod_elem['__search_key__'])[0]
     func = None
     if search_type.startswith('vfx/episode'):
         func = get_episode_asset
@@ -871,6 +872,61 @@ def get_production_asset(project, prod_elem, asset, force_create=False):
     elif search_type.startswith('vfx/shot'):
         func = get_shot_asset
     return func(project, prod_elem, asset, force_create)
+
+
+
+prod_elem_stypes = {}
+prod_elem_stypes['vfx/episode'] = ('vfx/asset_in_episode', 'episode_code',
+        "@SOBJECT(vfx/asset_in_episode['episode_code', '%s'].vfx/asset)")
+prod_elem_stypes['vfx/sequence'] = ('vfx/asset_in_sequence', 'sequence_code',
+        "@SOBJECT(vfx/asset_in_sequence['sequence_code', '%s'].vfx/asset)")
+prod_elem_stypes['vfx/shot'] = ('vfx/asset_in_shot', 'shot_code',
+        "@SOBJECT(vfx/asset_in_shot['shot_code', '%s'].vfx/asset)")
+
+def get_production_assets(project, prod_elem, expand_assets=True):
+    server = _s
+    search_type = server.split_search_key(prod_elem['__search_key__'])[0]
+    proj = server.get_project()
+    server.set_project(project)
+    prod_assets = []
+
+    for stype, (prod_stype, code_key, tel) in prod_elem_stypes.items():
+        if search_type.startswith(stype):
+            prod_assets = server.query(prod_stype, filters=[(code_key,
+                prod_elem['code'])])
+            if prod_assets and expand_assets:
+                assets = server.eval(tel%prod_elem['code'])
+                for prod_asset, asset in zip(
+                        sorted(prod_assets, key=lambda x:x['asset_code']),
+                        sorted(assets, key=lambda x:x['code'])):
+                    prod_asset['asset']=asset
+            break
+
+    if proj:
+        server.set_project(proj)
+    return prod_assets
+
+def is_production_asset_paired(prod_asset):
+    prod_snapshots = get_snapshot_from_sobject(prod_asset['__search_key__'])
+    rigs = [snap for snap in prod_snapshots if snap['context'] == 'rig']
+    shadeds = [snap for snap in prod_snapshots if snap['context'] == 'shaded']
+
+    def get_current(snaps):
+        for snap in snaps:
+            if snap['is_current']:
+                return snap
+
+    current_rig = get_current(rigs)
+    current_shaded = get_current(shadeds)
+
+    if not (current_rig and current_shaded):
+        return False
+
+    source_rig = get_publish_source(current_rig)
+    source_shaded = get_publish_source(current_shaded)
+
+    return is_cache_compatible(source_shaded, source_rig)
+
 
 def publish_asset_to_episode(project, episode, asset, snapshot, context,
         set_current=True):
@@ -937,7 +993,8 @@ def publish_asset(project, prod_elem, asset, snapshot, context,
 
     return newss
 
-def get_published_snapshots_in_episode(project_sk, episode, asset, context=None):
+def get_published_snapshots_in_episode(project_sk, episode, asset,
+        context=None):
     pub_obj = get_episode_asset(project_sk, episode, asset)
     snapshots = []
     if pub_obj:
