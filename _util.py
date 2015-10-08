@@ -895,12 +895,10 @@ def get_production_assets(project, prod_elem, expand_assets=True):
             prod_assets = server.query(prod_stype, filters=[(code_key,
                 prod_elem['code'])])
             if prod_assets and expand_assets:
-                assets = server.eval(tel%prod_elem['code'])
-                for prod_asset, asset in zip(
-                        sorted(prod_assets, key=lambda x:x['asset_code']),
-                        sorted(assets, key=lambda x:x['code'])):
-                    prod_asset['asset']=asset
-            break
+                assets = {a['code']:a for a in
+                        server.eval(tel%prod_elem['code'])}
+            for prod in prod_assets:
+                prod['asset'] = assets.get(prod['asset_code'])
 
     if proj:
         server.set_project(proj)
