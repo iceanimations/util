@@ -12,6 +12,8 @@ import shutil
 import sys
 op = os.path
 
+import iutil.symlinks as symlinks
+
 _s = None
 def set_server(server):
     global _s
@@ -33,22 +35,58 @@ except Exception as e:
     from auth import user as USER
     set_server(USER.TacticServer(setup=False))
 
+default_maps =[
+        symlinks.symlinkMapping(location='\\\\dbserver\\assets',
+            name='Captain_Khalfan', target=u'p:\\external\\captain_khalfan',
+            stype='<SYMLINKD>'),
+        symlinks.symlinkMapping(location='\\\\dbserver\\assets',
+            name='dettol_3', target=u'l:\\dettol_3', stype='<SYMLINKD>'),
+        symlinks.symlinkMapping(location='\\\\dbserver\\assets',
+            name='ding_dong', target=u'l:\\red\\ding_dong',
+            stype='<SYMLINKD>'),
+        symlinks.symlinkMapping(location='\\\\dbserver\\assets',
+            name='mansour_s02', target=u'p:\\external\\al_mansour_season_02',
+            stype='<SYMLINKD>'),
+        symlinks.symlinkMapping(location='\\\\dbserver\\assets',
+            name='mansour_s03', target=u'p:\\external\\al_mansour_season_03',
+            stype='<SYMLINKD>'),
+        symlinks.symlinkMapping(location='\\\\dbserver\\assets',
+            name='test_mansour_ep',
+            target=u'p:\\external\\al_mansour_season_02\\test_run',
+            stype='<SYMLINKD>')
+]
 
 class Server(object):
     def __init__(self, server=None):
         self._server = server if server else _s
 
     def __get__(self, obj, cls=None):
-        return self._server if self._server else _s
+        return obj._server if obj._server else _s
 
     def __set__(self, obj, server):
-        self._server = server if server else _s
+        obj._server = server if server else self._server
 
 class TacticAppUtils(object):
-    server = None
+    server = Server()
+    _maps = None
 
     def __init__(self, server=None):
         self.server = server if server else _s
+
+    def _getSymlinkMapping(self):
+        if self.server:
+            self._maps = symlinks.getSymlinks(
+                    self.server.get_base_dirs()
+                    ['win32_client_repo_dir']) + default_maps
+
+
+    def translatePath(self, path, reverse=False):
+        if not self._maps:
+            self._getSymlinkMapping()
+        if self.server:
+            return symlinks.translatePath(path, maps=self._maps,
+                    reverse=reverse)
+        return path
 
     if _s and _user:
         def get_all_task(self, user = _user):
@@ -180,13 +218,15 @@ class TacticAppUtils(object):
     def date_str_to_datetime(self, string, format = "%Y-%m-%d %H:%M:%S"):
         return datetime.strptime(string.split(".")[0], format)
 
-    def get_filename_from_snap(self, snap, mode = 'sandbox'):
+    def get_filename_from_snap(self, snap, mode = 'sandbox', translatePath=True):
         '''
         @snap: db dict
         '''
         self.set_project(project = snap['project_code'])
         path = self.server.get_all_paths_from_snapshot(snap['__search_key__'],
                                             mode = mode)[0]
+        if translatePath:
+            path = self.translatePath(path)
         return path if path else None
 
     filename_from_snap = get_filename_from_snap
@@ -1204,7 +1244,6 @@ class TacticAppUtils(object):
 
     def dummy(self):
         pass
-
 
 module = sys.modules[__name__]
 # make a default object
