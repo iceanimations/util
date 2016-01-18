@@ -263,7 +263,6 @@ class TacticAppUtils(object):
 
     def get_all_projects(self, ):
         project = self.server.get_project()
-        self.set_project(project = "sthpw")
         projects = self.server.query("sthpw/project")
         self.set_project(project = project)
         map(projects.pop, [ind for ind in reversed(range(len(projects)))
