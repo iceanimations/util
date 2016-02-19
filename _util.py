@@ -218,13 +218,14 @@ class TacticAppUtils(object):
     def date_str_to_datetime(self, string, format = "%Y-%m-%d %H:%M:%S"):
         return datetime.strptime(string.split(".")[0], format)
 
-    def get_filename_from_snap(self, snap, mode = 'sandbox', translatePath=True):
+    def get_filename_from_snap(self, snap, mode = 'sandbox',
+            translatePath=True, filetype='maya'):
         '''
         @snap: db dict
         '''
         self.set_project(project = snap['project_code'])
-        path = self.server.get_all_paths_from_snapshot(snap['__search_key__'],
-                                            mode = mode)[0]
+        path = self.server.get_all_paths_from_snapshot( snap['__search_key__'],
+                file_types = [filetype] if filetype else [], mode = mode)[0]
         if translatePath:
             path = self.translatePath(path)
         return path if path else None
@@ -697,15 +698,54 @@ class TacticAppUtils(object):
             elif fileEntry['base_type'] == 'sequence':
                 groups.append((file_path, fileEntry['file_range'], fileEntry['type']))
 
-        server.add_file(snapshot_to['code'], files, file_type=ftypes, mode=mode, create_icon=False)
+        server.add_file(snapshot_to['code'], files, file_type=ftypes,
+                mode=mode, create_icon=False)
         for directory in dirs:
             server.add_directory(snapshot_to['code'], directory[0],
                     file_type=directory[1], mode=mode)
         for group in groups:
-            server.add_group(snapshot_to['code'], group[1], group[0], mode=mode)
+            server.add_group(snapshot_to['code'], group[1], group[0],
+                    mode=mode)
 
         return True
 
+    def get_fileobj_from_path( self, path ):
+        ''' Given a path find a file object it exists in the tactic database
+
+         :type path: str
+        :rtype: dict
+        '''
+        base_dir = self.server.get_base_dirs()[ 'win32_client_repo_dir' ]
+        for transPath in symlinks.translatePath(path, linkdir=base_dir,
+                reverse=True, single=False ):
+            relpath = op.relpath(transPath, base_dir )
+            reldir, base_name = os.path.split( relpath )
+            fileobj = self.server.query( 'sthpw/file', filters = [
+                ( 'relative_dir', reldir.replace( '\\', '/' ) ),
+                ( 'file_name', base_name )], single=True )
+            if fileobj:
+                return fileobj
+
+        return {}
+
+    def get_snapshot_from_path(self, path):
+        ''' Given a path find a snapshot object it is referenced by
+
+        :type path: str
+        :rtype: dict
+        '''
+        fileobj = self.get_fileobj_from_path( path )
+        if fileobj:
+            return self.get_snapshot_from_fileobj( fileobj )
+        return {}
+
+    def get_snapshot_from_fileobj(self, fileobj):
+        ''' Given a fileobj find its parent snapshot
+
+        :type fileobj: str or dict
+        :rtype: dict
+        '''
+        return self.server.get_parent(fileobj)
 
     ###############################################################################
     #                                    icons                                    #
@@ -1213,7 +1253,7 @@ class TacticAppUtils(object):
         asset = snapshot.get('asset')
         if not asset:
             asset = server.get_parent(snapshot)
-        pub_obj = self.get_episode_asset(project, prod_elem, asset)
+        pub_obj = self.get_production_asset(project, prod_elem, asset)
         targets = self.get_all_publish_targets(snapshot)
         published = self.get_snapshot_from_sobject(pub_obj['__search_key__'])
         result = [target for target in targets for pub in published if
