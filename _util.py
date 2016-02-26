@@ -13,6 +13,7 @@ import sys
 op = os.path
 
 import iutil.symlinks as symlinks
+reload(symlinks)
 
 _s = None
 def set_server(server):
@@ -676,7 +677,8 @@ class TacticAppUtils(object):
             snapshot['search_code'])
         return snapshot
 
-    def copy_snapshot(self, snapshot_from, snapshot_to, mode='copy'):
+    def copy_snapshot(self, snapshot_from, snapshot_to, mode='copy',
+            exclude_types=[]):
         ''' make a copy of all the files in the snaphot_from to snapshot_to
         '''
         server = self.server
@@ -690,13 +692,18 @@ class TacticAppUtils(object):
                 'sthpw/file'):
             file_path = op.join(base_dir, fileEntry['relative_dir'],
                     fileEntry['file_name']).replace('/', '\\')
+            file_type = fileEntry['type']
+
+            if file_type in exclude_types:
+                continue
+
             if fileEntry['base_type'] == 'file':
                 files.append(file_path)
-                ftypes.append(fileEntry['type'])
+                ftypes.append(file_type)
             elif fileEntry['base_type'] == 'directory':
-                dirs.append((file_path, fileEntry['type']))
+                dirs.append((file_path, file_type))
             elif fileEntry['base_type'] == 'sequence':
-                groups.append((file_path, fileEntry['file_range'], fileEntry['type']))
+                groups.append((file_path, fileEntry['file_range'], file_type))
 
         server.add_file(snapshot_to['code'], files, file_type=ftypes,
                 mode=mode, create_icon=False)
@@ -801,7 +808,6 @@ class TacticAppUtils(object):
             else:
                 iconpath = self.get_sobject_icon(obj, mode=mode, file_type=file_type)
         except (AssertionError, ValueError, KeyError, AttributeError):
-            print 'getting path icon'
             iconpath = self.get_path_icon(obj, mode=mode, file_type=file_type)
         return self.cache_icon(obj, iconpath)
 
@@ -1162,7 +1168,6 @@ class TacticAppUtils(object):
             versionless=False):
         server = self.server
         texture_context = self.get_texture_context(snapshot)
-        print texture_context, version, versionless, prod_asset['__search_key__']
         return server.get_snapshot(prod_asset['__search_key__'],
                 context=texture_context, version=version, versionless=versionless)
 
@@ -1240,12 +1245,14 @@ class TacticAppUtils(object):
         server = self.server
         asset = snapshot.get('asset')
         if not asset:
-            asset = server.get_parent(snapshot)
-        pub_obj = self.get_episode_asset(project_sk, episode, asset)
-        targets = self.get_all_publish_targets(snapshot)
-        published = self.get_snapshot_from_sobject(pub_obj['__search_key__'])
-        result = [target for target in targets for pub in published if
-                target['code'] == pub['code']]
+            asset = server.get_parent( snapshot )
+        pub_obj = self.get_episode_asset( project_sk, episode, asset )
+        if not pub_obj:
+            return []
+        targets = self.get_all_publish_targets( snapshot )
+        published = self.get_snapshot_from_sobject( pub_obj['__search_key__'] )
+        result = [ target for target in targets for pub in published if
+                target['code'] == pub['code'] ]
         return result
 
     def get_published_targets(self, snapshot, project, prod_elem):
@@ -1254,10 +1261,12 @@ class TacticAppUtils(object):
         if not asset:
             asset = server.get_parent(snapshot)
         pub_obj = self.get_production_asset(project, prod_elem, asset)
+        if not pub_obj:
+            return []
         targets = self.get_all_publish_targets(snapshot)
         published = self.get_snapshot_from_sobject(pub_obj['__search_key__'])
-        result = [target for target in targets for pub in published if
-                target['code'] == pub['code']]
+        result = [ target for target in targets for pub in published if
+                target['code'] == pub['code'] ]
         return result
 
     def get_cache_compatible_objects(self, snapshot):
