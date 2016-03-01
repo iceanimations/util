@@ -220,7 +220,7 @@ class TacticAppUtils(object):
         return datetime.strptime(string.split(".")[0], format)
 
     def get_filename_from_snap(self, snap, mode = 'sandbox',
-            translatePath=True, filetype='maya'):
+            translatePath=True, filetype=None):
         '''
         @snap: db dict
         '''
@@ -594,7 +594,8 @@ class TacticAppUtils(object):
 
         refs = mi.get_reference_paths()
         t_info = self.get_tactic_file_info()
-        snap_path = [op.normpath(self.get_filename_from_snap(snap, mode = 'client_repo')).lower()
+        snap_path = [op.normpath(self.get_filename_from_snap(snap,
+            mode='client_repo', filetype='maya')).lower()
                     for snap in t_info.get('assets')]
         # if the ref'ed file has no entry in the fileInfo purge it from  refs
         for ref, path in dict(**refs).iteritems():
