@@ -224,7 +224,7 @@ class TacticAppUtils(object):
         '''
         @snap: db dict
         '''
-        self.set_project(project = snap['project_code'])
+        # self.set_project(project = snap['project_code'])
         path = self.server.get_all_paths_from_snapshot( snap['__search_key__'],
                 file_types = [filetype] if filetype else [], mode = mode)[0]
         if translatePath:
@@ -1009,6 +1009,26 @@ class TacticAppUtils(object):
         if proj:
             server.set_project(proj)
         return prod_assets
+
+    def is_production_asset(self, asset):
+        server = self.server
+        asset_sk = asset
+        if isinstance(asset, dict):
+            asset_sk = asset['__search_key__']
+        stype, code = server.split_search_key(asset_sk)
+        if stype.startswith('vfx/asset_in'):
+            return False
+        return True
+
+    def is_asset(self, asset):
+        server = self.server
+        asset_sk = asset
+        if isinstance(asset, dict):
+            asset_sk = asset['__search_key__']
+        stype, code = server.split_search_key(asset_sk)
+        if stype.startswith('vfx/asset?'):
+            return False
+        return True
 
     def is_production_asset_paired(self, prod_asset):
         prod_snapshots = self.get_snapshot_from_sobject(prod_asset['__search_key__'])
