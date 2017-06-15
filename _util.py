@@ -1177,11 +1177,11 @@ class TacticAppUtils(object):
         texture = {}
         rootContext = snapshot['context'].split('/')[0]
         if rootContext == 'shaded':
-            deps = self.get_dependencies(snapshot, keyword='texture',
-                    source=False)[0]
             try:
+                deps = self.get_dependencies(snapshot, keyword='texture',
+                       source=False)[0]
                 texture = deps[0]
-            except:
+            except IndexError:
                 pass
         return texture
 
