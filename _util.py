@@ -1179,7 +1179,7 @@ class TacticAppUtils(object):
         if rootContext == 'shaded':
             try:
                 deps = self.get_dependencies(snapshot, keyword='texture',
-                       source=False)[0]
+                        source=False)
                 texture = deps[0]
             except IndexError:
                 pass
@@ -1224,7 +1224,7 @@ class TacticAppUtils(object):
         server = self.server
         source_tag, target_tag = self.get_dependency_tags(keyword)
         server.add_dependency_by_code(target['code'], source['code'], type='ref',
-                tag=source_tag)
+                                      tag=source_tag)
         server.add_dependency_by_code(source['code'], target['code'], type='ref',
                 tag=target_tag)
         return True
