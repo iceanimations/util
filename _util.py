@@ -1181,7 +1181,7 @@ class TacticAppUtils(object):
                 deps = self.get_dependencies(snapshot, keyword='texture',
                         source=False)
                 texture = deps[0]
-            except IndexError:
+            except IndexError, KeyError:
                 pass
         return texture
 
@@ -1205,12 +1205,12 @@ class TacticAppUtils(object):
     ###############################################################################
 
     dependency_tags_map = {
-            'publish': ('source', 'target'),
-            'texture': ('model', 'images'),
-            'combined': ('separate', 'combined'),
-            'cache': ('compatible_shaded', 'compatible_rig'),
-            'default': ('forward', 'backward'),
-            'mayagpucache': ('mayafile', 'gpucache')
+        'publish': ('source', 'target'),
+        'texture': ('model', 'images'),
+        'combined': ('separate', 'combined'),
+        'cache': ('compatible_shaded', 'compatible_rig'),
+        'default': ('forward', 'backward'),
+        'mayagpucache': ('mayafile', 'gpucache')
     }
 
     def get_dependency_tags(self, keyword='default'):
