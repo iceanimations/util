@@ -36,9 +36,11 @@ except Exception as e:
     from auth import user as USER
     set_server(USER.TacticServer(setup=False))
 
-default_maps =[
-        symlinks.symlinkMapping(location='\\\\dbserver\\assets',
-            name='Captain_Khalfan', target=u'p:\\external\\captain_khalfan',
+default_maps = [
+        symlinks.symlinkMapping(
+            location='\\\\dbserver\\assets',
+            name='Captain_Khalfan',
+            target=u'p:\\external\\captain_khalfan',
             stype='<SYMLINKD>'),
         symlinks.symlinkMapping(location='\\\\dbserver\\assets',
             name='dettol_3', target=u'l:\\dettol_3', stype='<SYMLINKD>'),
@@ -79,7 +81,6 @@ class TacticAppUtils(object):
             self._maps = symlinks.getSymlinks(
                     self.server.get_base_dirs()
                     ['win32_client_repo_dir']) + default_maps
-
 
     def translatePath(self, path, reverse=False):
         if not self._maps:
@@ -232,6 +233,7 @@ class TacticAppUtils(object):
         return path if path else None
 
     filename_from_snap = get_filename_from_snap
+
     # def filter_user_tasks(user, tasks):
     #     '''
     #     Extract the tasks that belong ot `user' from a list `tasks'.
@@ -239,6 +241,7 @@ class TacticAppUtils(object):
     #     @tasks: list of task
     #     '''
     #     return filter(lambda task: task["assigned"] == user, tasks)
+
     def get_project_from_search_key(self, s_key):
 
         if 'project' in s_key:
@@ -260,6 +263,7 @@ class TacticAppUtils(object):
     #         for proj in projects:
     #             proj["start_date"] = all
     #     return projects
+
     def get_server(self, ):
         return self.server
 
@@ -361,14 +365,15 @@ class TacticAppUtils(object):
     #         for task in tasks:
     #             process = task["process"]
     #             snaps = []
-    #             task_snap[task["__search_key__"]] = {"task": task, "snaps": snaps}
-
+    #             task_snap[task["__search_key__"]] = {
+    #                   "task": task, "snaps": snaps}
     #             for snap in sobj_snaps:
     #                 if snap["process"] == process:
     #                     snaps.append(snap)
 
     #         snapshoted[sobj] = task_snap
     #     return snapshoted
+
     def get_tasks(self, project, process = None, user = None, clean = False):
 
         '''
@@ -1321,4 +1326,3 @@ for name, val in TacticAppUtils.__dict__.items():
     obj = getattr(main, name)
     if type(obj) == type(TacticAppUtils.dummy):
         setattr(module, name, obj)
-
